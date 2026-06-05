@@ -1,0 +1,12 @@
+#python
+__pycache__
+.py[cdo]
+.venv
+
+#database
+extensions/
+instance/
+
+# outside assets
+shoplisting/static/alpine.min.js
+shoplisting/static/LiberationSans-Rg.otf

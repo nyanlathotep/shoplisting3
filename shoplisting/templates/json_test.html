@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>JSON Editor</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        textarea { width: 100%; height: 400px; font-family: monospace; }
+        button { padding: 10px 20px; margin-top: 10px; }
+        pre { background: #eee; padding: 10px; }
+    </style>
+</head>
+<body>
+
+<h2>JSON Editor</h2>
+
+<textarea id="jsonInput">
+{
+  "name": "Test Recipe",
+  "steps": [
+    {
+      "instruction": "Do something",
+      "items": [
+        {"name": "Flour", "amount": "2", "unit": "cup"},
+        {"name": "fish", "amount": "1", "unit": ""},
+        {"name": "potato", "amount": "2", "unit": ""},
+        {"name": "water", "amount": "yes", "unit": ""}
+      ]
+    }
+  ]
+}  
+</textarea>
+
+<br>
+<button onclick="sendJSON()">Send JSON</button>
+
+<pre id="result"></pre>
+
+<script>
+async function sendJSON() {
+    let raw = document.getElementById("jsonInput").value;
+    let parsed;
+
+    try {
+        parsed = JSON.parse(raw);
+    } catch (e) {
+        document.getElementById("result").textContent = "Invalid JSON: " + e;
+        return;
+    }
+
+    let res = await fetch("/admin/recipe/update_json", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(parsed)
+    });
+
+    let text = await res.text();
+    document.getElementById("result").textContent = text;
+}
+</script>
+
+</body>
+</html>

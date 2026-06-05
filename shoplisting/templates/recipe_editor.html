@@ -1,0 +1,316 @@
+{% extends 'admin/master.html' %}
+{% block body %}
+
+<div x-data="recipeEditor()" x-init="init()" class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 x-text="recipe.id ? 'Edit Recipe' : 'Create Recipe'"></h2>
+        <button class="btn btn-success" @click="save()">Save Recipe</button>
+    </div>
+
+    <!-- Basic Info -->
+    <div class="card mb-4">
+        <div class="card-header"><strong>Basic Info</strong></div>
+        <div class="card-body">
+
+            <label class="form-label">Recipe Name</label>
+            <input class="form-control mb-3" x-model="recipe.name">
+
+            <label class="form-label">Card Top Note (Time)</label>
+            <input class="form-control mb-3" x-model="recipe.top_note">
+
+            <label class="form-label">Card Bottom Note (Recipe Source)</label>
+            <input class="form-control mb-3" x-model="recipe.bot_note">
+
+            <label class="form-label">Shopping List Note</label>
+            <input class="form-control mb-3" x-model="recipe.note">
+
+            <label class="form-label">Remark (database only)</label>
+            <input class="form-control mb-3" x-model="recipe.remark">
+
+        </div>
+    </div>
+
+    <!-- Tags -->
+    <div class="card mb-4">
+        <div class="card-header"><strong>Card Tags</strong></div>
+        <div class="card-body">
+
+            <template x-for="group in groupedTags" :key="group.label">
+                <div class="mb-3">
+                    <strong class="mb-2" x-text="group.label"></strong>
+                    <div class="px-2">
+                        <div class="row">
+                            <template x-for="tag in group.tags" :key="tag.id">
+                                <div class="col-6 col-md-4 mb-1">
+                                    <label class="form-check-label d-flex align-items-center">
+                                        <input type="checkbox"
+                                            class="form-check-input me-2"
+                                            :value="tag.id"
+                                            @change="toggleTag(tag.id)"
+                                            :checked="recipe.tags.includes(tag.id)">
+                                        <span x-text="tag.name"></span>
+                                    </label>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+        </div>
+    </div>
+
+
+    <!-- Steps -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>Steps</strong>
+            <button class="btn btn-primary btn-sm"
+                    @click="recipe.steps.push({instruction:'', items:[]})">
+                + Add Step
+            </button>
+        </div>
+
+        <div class="card-body">
+
+            <template x-for="(step, sIndex) in recipe.steps" :key="sIndex">
+                <div class="border rounded p-3 mb-4">
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="mb-0">Step <span x-text="sIndex + 1"></span></h5>
+                        <button class="btn btn-danger btn-sm"
+                                @click="recipe.steps.splice(sIndex,1)">
+                            Remove Step
+                        </button>
+                    </div>
+
+                    <label class="form-label">Instruction</label>
+                    <input class="form-control mb-3" x-model="step.instruction">
+
+                    <!-- Items -->
+                    <h6>Items</h6>
+
+                    <template x-for="(item, iIndex) in step.items" :key="iIndex">
+                        <div class="row g-2 mb-2 position-relative">
+
+                            <!-- Amount -->
+                            <div class="col-3">
+                                <input class="form-control" placeholder="Amount"
+                                       x-model="item.amount">
+                            </div>
+
+                            <!-- Unit -->
+                            <div class="col-3">
+                                <input class="form-control" placeholder="Unit"
+                                       x-model="item.unit">
+                            </div>
+
+                            <!-- Ingredient -->
+                            <div class="col-4 position-relative">
+
+                                <input class="form-control"
+                                       placeholder="Ingredient"
+                                       x-model="item.ingredient"
+                                       @input.debounce.300ms="searchIngredient(item)"
+                                       @keydown.down.prevent="moveHighlight(item, 1)"
+                                       @keydown.up.prevent="moveHighlight(item, -1)"
+                                       @keydown.enter.prevent="chooseHighlighted(item)"
+                                       @keydown.escape="item.suggestions = []"
+                                       @blur="closeSuggestions(item)"
+                                       :class="{'border-warning': isNewIngredient(item)}">
+
+                                <!-- Suggestions -->
+                                <div class="suggestions shadow"
+                                     x-show="item.suggestions && item.suggestions.length"
+                                     style="position:absolute; background:white; z-index:10; width:100%;">
+                                    <template x-for="(s, idx) in item.suggestions" :key="idx">
+                                        <div class="px-2 py-1"
+                                             :class="{'bg-primary text-white': idx === item.highlightIndex}"
+                                             @mousedown.prevent="selectSuggestion(item, s)"
+                                             x-text="s"
+                                             style="cursor:pointer;">
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <!-- New ingredient indicator -->
+                                <div x-show="isNewIngredient(item)" class="text-warning small mt-1">
+                                    New ingredient will be created
+                                </div>
+
+                            </div>
+
+                            <!-- Remove -->
+                            <div class="col-2 d-flex align-items-center">
+                                <button class="btn btn-outline-danger btn-sm"
+                                        @click="step.items.splice(iIndex,1)">
+                                    X
+                                </button>
+                            </div>
+
+                        </div>
+                    </template>
+
+                    <button class="btn btn-secondary btn-sm"
+                            @click="step.items.push({amount:'', unit:'', ingredient:'', suggestions:[], highlightIndex:-1, isExisting:false})">
+                        + Add Item
+                    </button>
+
+                </div>
+            </template>
+
+        </div>
+    </div>
+
+    <!-- Debug JSON -->
+    <div class="card mt-4">
+        <div class="card-header"><strong>Debug JSON</strong></div>
+        <div class="card-body">
+            <pre x-text="JSON.stringify(recipe, null, 2)"></pre>
+        </div>
+    </div>
+
+</div>
+
+{% block tail %}
+<script src={{ url_for('static', filename='alpine.min.js') }} defer></script>
+<script>
+function recipeEditor() {
+    return {
+        recipe: {
+            id: null,
+            name: "",
+            top_note: "",
+            bot_note: "",
+            remark: "",
+            tags: [],
+            steps: []
+        },
+
+        allTags: [],
+
+        async init() {
+            // Load tags
+            let tagRes = await fetch("/api/tag/list");
+            this.allTags = await tagRes.json();
+
+            // Load recipe if editing
+            const params = new URLSearchParams(window.location.search);
+            if (params.has("id")) {
+                let id = params.get("id");
+                let res = await fetch(`/api/recipe/get?id=${id}`);
+                this.recipe = await res.json();
+                // Normalize loaded items so they behave like existing ones
+                for (let step of this.recipe.steps) {
+                    for (let item of step.items) {
+                        item.suggestions = [];
+                        item.highlightIndex = -1;
+                        item.isExisting = true;   // <-- key fix
+                    }
+                }
+            }
+        },
+
+        async searchIngredient(item) {
+            if (!item.ingredient) {
+                item.suggestions = [];
+                item.highlightIndex = -1;
+                item.isExisting = false;
+                return;
+            }
+            let res = await fetch(`/api/ingredient/search?q=${encodeURIComponent(item.ingredient)}`);
+            item.suggestions = await res.json();
+            item.highlightIndex = -1;
+
+            // Persistent existence flag
+            item.isExisting = item.suggestions.includes(item.ingredient);
+        },
+
+        moveHighlight(item, direction) {
+            if (!item.suggestions || !item.suggestions.length) return;
+
+            let max = item.suggestions.length - 1;
+
+            item.highlightIndex += direction;
+
+            if (item.highlightIndex < 0) item.highlightIndex = max;
+            if (item.highlightIndex > max) item.highlightIndex = 0;
+        },
+
+        chooseHighlighted(item) {
+            if (item.highlightIndex >= 0 &&
+                item.highlightIndex < item.suggestions.length) {
+
+                let choice = item.suggestions[item.highlightIndex];
+                this.selectSuggestion(item, choice);
+            }
+        },
+
+        get groupedTags() {
+            const groups = {
+                TOP_LEFT:   { label: "Prep (◤)",          tags: [] },
+                TOP_RIGHT:  { label: "Supply (◥)",        tags: [] },
+                BOT_LEFT:   { label: "Meal Type (◣)",     tags: [] },
+                BOT_RIGHT:  { label: "Protein Source (◢)", tags: [] }
+            };
+
+            for (let tag of this.allTags) {
+                if (groups[tag.position]) {
+                    groups[tag.position].tags.push(tag);
+                }
+            }
+
+            return Object.values(groups);
+        },
+
+        selectSuggestion(item, name) {
+            item.ingredient = name;
+            item.suggestions = [];
+            item.highlightIndex = -1;
+            item.isExisting = true;
+        },
+
+        closeSuggestions(item) {
+            setTimeout(() => {
+                item.suggestions = [];
+                item.highlightIndex = -1;
+            }, 150);
+        },
+
+        isNewIngredient(item) {
+            return item.ingredient && !item.isExisting;
+        },
+
+        toggleTag(tagId) {
+            let idx = this.recipe.tags.indexOf(tagId);
+            if (idx === -1) {
+                this.recipe.tags.push(tagId);
+            } else {
+                this.recipe.tags.splice(idx, 1);
+            }
+        },
+
+        async save() {
+            let res = await fetch("/api/recipe/save", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(this.recipe)
+            });
+
+            let out = await res.text();
+            if (res.ok) {
+                out = JSON.parse(out);
+                if (out.redirect) {
+                    window.location = out.redirect;
+                }
+            } else {
+                alert("Save failed")
+            }
+        }
+    }
+}
+</script>
+{% endblock %}
+
+{% endblock %}
