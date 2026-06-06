@@ -46,8 +46,8 @@ class CategoryAdmin(ModelView):
     }
 
 class IngredientAdmin(ModelView):
-    column_list = ('name', 'category')
-    column_sortable_list = ('name', ('category', 'category.full_path'))
+    column_list = ('name', 'category', 'recipe_count')
+    column_sortable_list = ('name', ('category', 'category.full_path'), 'recipe_count')
     column_searchable_list = ('name',)
     form_excluded_columns = ('recipe_instances',)
     form_rules = [

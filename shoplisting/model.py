@@ -69,6 +69,17 @@ class Ingredient(db.Model):
     category: Mapped["Category"] = relationship()
     recipe_instances: Mapped[List["RecipeItem"]] = relationship()
 
+    @hybrid_property
+    def recipe_count(self):
+        return len(self.recipe_instances)
+    @recipe_count.expression
+    def recipe_count(cls):
+        return (
+            select(func.count(RecipeItem.id))
+            .where(RecipeItem.ingredient_id == cls.id)
+            .label("recipe_count")
+        )
+
 class TagCorner(enum.Enum):
     TOP_LEFT = 1
     TOP_RIGHT = 2
