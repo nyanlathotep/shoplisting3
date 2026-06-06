@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 from flask_migrate import Migrate
 from flask_admin import Admin
 from sqlalchemy import event
@@ -44,3 +44,6 @@ def start_server():
 def homepage():
     return 'hi'
 
+@app.route("/scan")
+def scan():
+    return render_template('sl_picker.html')

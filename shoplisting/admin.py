@@ -59,6 +59,7 @@ class IngredientAdmin(ModelView):
 class RecipeAdmin(ModelView):
     create_template = 'recipe_editor.html'
     edit_template = 'recipe_editor.html'
+    column_exclude_list = ('dmtx_id',)
 
 class TagAdmin(ModelView):
     form_widget_args = {

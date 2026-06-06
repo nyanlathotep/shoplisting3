@@ -8,8 +8,8 @@ def gen_recipe_label(recipe_id):
   return f'R{recipe_id:08d}'
 
 def gen_recipe_barcode(recipe_id):
-  recipe_id = gen_recipe_label(recipe_id)
-  return gen_datamatrix(recipe_id, {'size': '12x12'})
+  #recipe_id = gen_recipe_label(recipe_id)
+  return gen_datamatrix(recipe_id, {'scheme': 'text', 'size': '16x16'})
 
 def gen_datamatrix(text, dmtx_params):
   encoded = dmtx_encode(text.encode('ascii'), **dmtx_params)
@@ -206,6 +206,6 @@ class MealCard(DrawArea, ConfigProxy):
     img = draw.Image(*bb, data = dmtx, mimeType='image/png')
     self.draw(img, 5)
     label_pos = self.transform(self.cfg('card.dmtx.labelpos'))
-    title = draw.Text(gen_recipe_label(recipeid), self.cfg('typeface.card.dmtxsize'), *label_pos, text_anchor='middle',
+    title = draw.Text(recipeid.replace(' ','_'), self.cfg('typeface.card.dmtxsize'), *label_pos, text_anchor='middle',
       font_family=self.cfg('typeface.family'))
     self.draw(title, 6)

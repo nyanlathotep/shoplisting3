@@ -1,12 +1,39 @@
 from typing import List
 import enum
 from sqlalchemy import Enum, ForeignKey, Table, Column, select, literal_column, update, event
-from sqlalchemy.orm import Mapped, mapped_column, relationship, aliased
+from sqlalchemy.orm import Mapped, mapped_column, relationship, aliased, Session
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import func
 from shoplisting.db import db
 from datetime import datetime
-import hashlib, json
+import hashlib, json, string, re
+from shoplisting.util.math import base36
+
+def dmtx_base_id(name):
+    base_dmtx = re.sub(r'[^a-z0-9\s]+', '', name.lower())
+    return re.sub(r'\s+', ' ', base_dmtx).strip()
+
+def unique_dmtx_id(session, recipe):
+    base_dmtx = dmtx_base_id(recipe.name)
+    dmtx = 'r ' + base_dmtx[:14]
+    exists = session.scalar(
+        select(Recipe).where(Recipe.dmtx_id == dmtx)
+    )
+    if not exists: return dmtx
+    prefix = f'r{base36.to_base(recipe.id) }'
+    dmtx = prefix + base_dmtx[:16-len(prefix)]
+    exists = session.scalar(
+        select(Recipe).where(Recipe.dmtx_id == dmtx)
+    )
+    if not exists: return dmtx
+    i = 0
+    while exists:
+        suffix = base36.to_base(i)
+        dmtx = prefix + base_dmtx[:16-len(prefix)-len(suffix)] + suffix  
+        exists = db.session.scalar(
+            select(model).where(column == dmtx)
+        )
+    return dmtx
 
 class Category(db.Model):
     __tablename__ = "store_category"
@@ -70,6 +97,7 @@ class Recipe(db.Model):
     __tablename__ = "recipe"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column()
+    dmtx_id: Mapped[str] = mapped_column(unique=True, nullable=True)
     steps: Mapped[List["RecipeStep"]] = relationship(back_populates="recipe", cascade="all, delete-orphan")
     top_note: Mapped[str] = mapped_column(nullable=True)
     bot_note: Mapped[str] = mapped_column(nullable=True)
@@ -79,7 +107,7 @@ class Recipe(db.Model):
     @hybrid_property
     def card_data(self):
         data = {
-            'id': self.id,
+            'id': self.dmtx_id,
             'name': self.name,
             'top_note': self.top_note if self.top_note else '',
             'bot_note': self.bot_note if self.bot_note else '',
@@ -106,6 +134,13 @@ class Recipe(db.Model):
             .order_by(CardSig.affirmed_at.desc()).first()
         if not last_sig: return True
         return current_sig != last_sig.signature
+
+@event.listens_for(Recipe, "before_insert")
+def assign_dmtx_id(mapper, connection, target):
+    if target.dmtx_id is None:
+        with Session(bind=connection) as session:
+            target.dmtx_id = unique_dmtx_id(session, target)
+            session.commit()
 
 class RecipeStep(db.Model):
     __tablename__ = "recipe_step"
