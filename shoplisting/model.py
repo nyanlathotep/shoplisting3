@@ -9,10 +9,101 @@ from datetime import datetime
 import hashlib, json, string, re
 from shoplisting.util.math import base36
 
+class CategoryDisplay(enum.Enum):
+    INHERIT = 1
+    HIDE = 2
+    SHOW = 3
+
+class Category(db.Model):
+    __tablename__ = "store_category"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column()
+    parent_id: Mapped[int] = mapped_column(ForeignKey("store_category.id"), nullable=True)
+    parent: Mapped["Category"] = relationship(back_populates="children", remote_side=[id])
+    children: Mapped[List["Category"]] = relationship(back_populates="parent")
+    display: Mapped[CategoryDisplay] = mapped_column(Enum(CategoryDisplay),
+        server_default=CategoryDisplay.INHERIT.name)
+    full_path: Mapped[str] = mapped_column(server_default='')
+    def update_full_path(self):
+        node = self
+        parts = []
+        while node:
+            parts.append(node.name)
+            node = node.parent
+        print(self.id, self.parent_id, self.name, parts)
+        self.full_path = " / ".join(reversed(parts))
+        print(self.full_path)
+        for child in self.children:
+            child.update_full_path()
+    def __str__(self):
+        return self.full_path
+
+# I hate databases
+@event.listens_for(Category, "before_insert")
+def also_full_path_on_insert_because_this_is_hell(mapper, connection, target):
+    with Session(bind=connection) as session:
+        target.update_full_path()
+        session.commit()
+@event.listens_for(Category.parent_id, "set")
+def category_parent_change(target, value, oldvalue, initiator):
+    if value == oldvalue: return
+    target._needs_path_update = True
+@event.listens_for(Category.name, "set")
+def category_name_change(target, value, oldvalue, initiator):
+    if value == oldvalue: return
+    target._needs_path_update = True
+@event.listens_for(db.session, "after_flush_postexec")
+def update_path_values(session, flush_context):
+    print('what')
+    for obj in session.identity_map.values():
+        if isinstance(obj, Category) and getattr(obj, "_needs_path_update", False):
+            obj.update_full_path()
+            print(f'updating {obj.name}')
+            del obj._needs_path_update
+
+class Ingredient(db.Model):
+    __tablename__ = "ingredient"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column()
+    category_id: Mapped[int] = mapped_column(ForeignKey("store_category.id"), nullable=True)
+    category: Mapped["Category"] = relationship()
+    recipe_instances: Mapped[List["RecipeItem"]] = relationship()
+
+class TagCorner(enum.Enum):
+    TOP_LEFT = 1
+    TOP_RIGHT = 2
+    BOT_LEFT = 4
+    BOT_RIGHT = 8
+
+class Tag(db.Model):
+    __tablename__ = "tag"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column()
+    position: Mapped[TagCorner] = mapped_column(Enum(TagCorner),
+        server_default=TagCorner.TOP_LEFT.name)
+    color: Mapped[str] = mapped_column()
+    def __str__(self):
+        ps = ''.join(x[0] for x in self.position.name.split('_'))
+        return f'<{ps}> {self.name}'
+
+recipe_tag_table = Table(
+    "recipe_tag_table",
+    db.metadata,
+    Column('recipe_id', ForeignKey('recipe.id'), primary_key=True),
+    Column('tag_id', ForeignKey('tag.id'), primary_key=True)
+)
+
+### recipe
+
+# base id, strips non-dmtx text mode characters
 def dmtx_base_id(name):
     base_dmtx = re.sub(r'[^a-z0-9\s]+', '', name.lower())
     return re.sub(r'\s+', ' ', base_dmtx).strip()
 
+# unique readable dmtx id generator, first tries r_ prefix + base id (max 16 chars)
+# if fails, adds a base36 encoded version of the recipe id to the prefix
+# if that fails, adds an incrementing base36 suffix to the end until it works
+# probably will never really be needed
 def unique_dmtx_id(session, recipe):
     base_dmtx = dmtx_base_id(recipe.name)
     dmtx = 'r ' + base_dmtx[:14]
@@ -35,64 +126,6 @@ def unique_dmtx_id(session, recipe):
         )
     return dmtx
 
-class Category(db.Model):
-    __tablename__ = "store_category"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column()
-    parent_id: Mapped[int] = mapped_column(ForeignKey("store_category.id"), nullable=True)
-    parent: Mapped["Category"] = relationship(back_populates="children", remote_side=[id])
-    children: Mapped[List["Category"]] = relationship(back_populates="parent")
-    @hybrid_property
-    def full_path(self):
-        node = self
-        parts = []
-        while node:
-            parts.append(node.name)
-            node = node.parent
-        return " / ".join(reversed(parts))
-    # @full_path.expression
-    # def full_path(self):
-    #     parent = aliased(self)
-    #     return (
-    #         select(func.group_concat(parent.name, ' / '))
-    #         .where(parent.id == self.id)
-    #         .correlate(self)
-    #         .scalar_subquery()
-    #     )
-    def __str__(self):
-        return self.full_path
-
-class Ingredient(db.Model):
-    __tablename__ = "ingredient"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column()
-    category_id: Mapped[int] = mapped_column(ForeignKey("store_category.id"), nullable=True)
-    category: Mapped["Category"] = relationship()
-    recipe_instances: Mapped[List["RecipeItem"]] = relationship()
-
-class TagCorner(enum.Enum):
-    TOP_LEFT = 1
-    TOP_RIGHT = 2
-    BOT_LEFT = 4
-    BOT_RIGHT = 8
-
-class Tag(db.Model):
-    __tablename__ = "tag"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column()
-    position: Mapped[TagCorner] = mapped_column(Enum(TagCorner))
-    color: Mapped[str] = mapped_column()
-    def __str__(self):
-        ps = ''.join(x[0] for x in self.position.name.split('_'))
-        return f'<{ps}> {self.name}'
-
-recipe_tag_table = Table(
-    "recipe_tag_table",
-    db.metadata,
-    Column('recipe_id', ForeignKey('recipe.id'), primary_key=True),
-    Column('tag_id', ForeignKey('tag.id'), primary_key=True)
-)
-
 class Recipe(db.Model):
     __tablename__ = "recipe"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -104,6 +137,7 @@ class Recipe(db.Model):
     note: Mapped[str] = mapped_column(nullable=True)
     remark: Mapped[str] = mapped_column(nullable=True)
     tags: Mapped[List[Tag]] = relationship(secondary=recipe_tag_table)
+    # gathers all relevant data for the printed card into an object
     @hybrid_property
     def card_data(self):
         data = {
@@ -120,12 +154,15 @@ class Recipe(db.Model):
                 'position': tag.position.name
             })
         return data
+    # computes a stable hash of the card_data
+    # for determining what cards need reprinting
     @hybrid_property
     def card_sig(self):
         dat = self.card_data
         dat['tags'].sort(key=lambda x: x['name'])
         dat = json.dumps(dat, sort_keys=True)
         return hashlib.sha256(dat.encode('ascii')).hexdigest()
+    # uses cardsigs to determine what cards have changed
     def outdated(self):
         current_sig = self.card_sig
         last_sig = CardSig.query \
@@ -135,6 +172,7 @@ class Recipe(db.Model):
         if not last_sig: return True
         return current_sig != last_sig.signature
 
+# auto-assigns a dmtx ID when inserting recipes
 @event.listens_for(Recipe, "before_insert")
 def assign_dmtx_id(mapper, connection, target):
     if target.dmtx_id is None:
@@ -142,6 +180,7 @@ def assign_dmtx_id(mapper, connection, target):
             target.dmtx_id = unique_dmtx_id(session, target)
             session.commit()
 
+# recipe subcomponents
 class RecipeStep(db.Model):
     __tablename__ = "recipe_step"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -162,13 +201,6 @@ class RecipeItem(db.Model):
     ingredient_id: Mapped[int] = mapped_column(ForeignKey("ingredient.id"))
     ingredient: Mapped["Ingredient"] = relationship(back_populates="recipe_instances")
 
-# page_recipe_table = Table(
-#     "page_recipe_table",
-#     db.metadata,
-#     Column('page_id', ForeignKey('svg_page.id'), primary_key=True),
-#     Column('recipe_id', ForeignKey('recipe.id'), primary_key=True)
-# )
-
 class CardSig(db.Model):
     __tablename__ = "card_signature"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -186,7 +218,6 @@ class CardPage(db.Model):
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     data: Mapped[str] = mapped_column()
     affirmed: Mapped[bool] = mapped_column(server_default='0')
-    #recipes: Mapped[List[Recipe]] = relationship(secondary=page_recipe_table)
     signatures: Mapped[List["CardSig"]] = relationship(back_populates="page", passive_deletes=True)
     @hybrid_property
     def recipe_list(self, full=False):

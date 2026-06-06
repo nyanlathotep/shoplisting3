@@ -9,6 +9,7 @@ from flask_admin import expose
 from flask_admin.base import BaseView
 from flask import request, jsonify, flash, redirect, url_for, Response
 import json, io, zipfile
+from datetime import date
 from .svg.svg_helper import generate_svg_batch
 
 # class CategoryAjaxLoader(QueryAjaxModelLoader):
@@ -32,10 +33,11 @@ from .svg.svg_helper import generate_svg_batch
 
 class CategoryAdmin(ModelView):
     column_list = ('name', 'parent')
-    column_sortable_list = ('name', ('parent', ('parent_id',)))
+    column_sortable_list = ('name', ('parent', 'parent.full_path'))
+    column_searchable_list = ('name',)
     form_excluded_columns = ('children')
     form_rules = [
-        rules.FieldSet(('name', 'parent'))
+        rules.FieldSet(('name', 'parent', 'display'))
     ]
     form_args = {
         'parent': {
@@ -45,7 +47,8 @@ class CategoryAdmin(ModelView):
 
 class IngredientAdmin(ModelView):
     column_list = ('name', 'category')
-    column_sortable_list = ('name', ('category', ('category_id',)))
+    column_sortable_list = ('name', ('category', 'category.full_path'))
+    column_searchable_list = ('name',)
     form_excluded_columns = ('recipe_instances',)
     form_rules = [
         rules.FieldSet(('name', 'category'))
@@ -60,6 +63,7 @@ class RecipeAdmin(ModelView):
     create_template = 'recipe_editor.html'
     edit_template = 'recipe_editor.html'
     column_exclude_list = ('dmtx_id',)
+    column_searchable_list = ('name',)
 
 class TagAdmin(ModelView):
     form_widget_args = {
@@ -173,7 +177,24 @@ class CardBatchView(BaseView):
         flash("Pages deleted", "success")
         return "ok"
 
+class ShoppingListView(BaseView):
+    @expose('/', methods=['GET'])
+    def index(self):
+        recipes = Recipe.query.order_by(Recipe.name).all()
+        default_date = date.today().isoformat()
+        return self.render('sl_picker.html',
+            recipes = recipes,
+            default_date = default_date
+        )
+    @expose('/parse_csv', methods=['POST'])
+    def parse_csv(self):
+        pass
+    @expose('/build_list', methods=['POST'])
+    def generate(self):
+        pass
+
 def init_admin_views(admin, db):
+    admin.add_view(ShoppingListView("Shopping List"))
     admin.add_view(CategoryAdmin(Category, db))
     admin.add_view(IngredientAdmin(Ingredient, db))
     admin.add_view(RecipeAdmin(Recipe, db))

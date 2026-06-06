@@ -1,0 +1,294 @@
+{% extends 'admin/master.html' %}
+
+{% block head %}
+    {{ super() }}
+    <!-- Select2 CSS -->
+    <link rel="stylesheet" href="{{ url_for('admin.static', filename='vendor/select2/select2.css') }}">
+    <link rel="stylesheet" href="{{ url_for('admin.static', filename='vendor/select2/select2-bootstrap4.css') }}">
+    <style>
+        .input-mode { display: none; }
+        .recipe-item {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fafafa;
+            margin-bottom: 6px;
+            cursor: grab;
+        }
+        .recipe-item.dragging {
+            opacity: 0.5;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+
+<!-- GENERATION PANEL -->
+<div class="card mb-4">
+    <div class="card-header"><strong>Generate Shopping List</strong></div>
+    <div class="card-body">
+
+        <!-- Input mode selector -->
+        <div class="btn-group mb-3" role="group">
+            <button class="btn btn-outline-primary mode-btn active" data-mode="csv-upload">CSV Upload</button>
+            <button class="btn btn-outline-primary mode-btn" data-mode="csv-text">CSV Text</button>
+            <button class="btn btn-outline-primary mode-btn" data-mode="manual">Manual Select</button>
+        </div>
+
+        <!-- CSV Upload -->
+        <div id="csv-upload" class="input-mode" style="display:block;">
+            <input type="file" id="csv-file" class="form-control-file" accept=".csv">
+            <button id="import-csv-file" class="btn btn-secondary mt-2">Import CSV File</button>
+        </div>
+
+        <!-- CSV Text -->
+        <div id="csv-text" class="input-mode">
+            <textarea id="csv-textarea" class="form-control" rows="5"
+                      placeholder="Paste CSV text here…"></textarea>
+            <button id="import-csv-text" class="btn btn-secondary mt-2">Import CSV Text</button>
+        </div>
+
+        <!-- Manual Select -->
+        <div id="manual" class="input-mode">
+            <select id="recipe-picker" class="form-control">
+                <option value="">Select recipe…</option>
+                {% for r in recipes %}
+                    <option value="{{ r.id }}">{{ r.name }}</option>
+                {% endfor %}
+            </select>
+            <button id="add-manual" class="btn btn-secondary mt-2">Add Recipe</button>
+        </div>
+
+        <hr>
+
+        <!-- Reorderable list -->
+        <h5>Selected Recipes</h5>
+        <div id="recipe-list"></div>
+
+        <!-- Hidden field for POST -->
+        <input type="hidden" id="recipes-field" name="recipes">
+
+        <hr>
+
+        <!-- Start date -->
+        <label class="form-label">Start Date</label>
+        <input type="date" id="start-date" class="form-control" value="{{ default_date }}">
+
+        <button id="generate-btn" class="btn btn-success mt-3">Generate Shopping List</button>
+
+    </div>
+</div>
+
+<!-- EXISTING SHOPPING LISTS -->
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Created</th>
+            <th>Start Date</th>
+            <th>Recipes</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for sl in shopping_lists %}
+        <tr>
+            <td>{{ sl.id }}</td>
+            <td>{{ sl.created_at }}</td>
+            <td>{{ sl.start_date }}</td>
+            <td>{{ sl.recipe_count }}</td>
+            <td>
+                <a class="btn btn-sm btn-primary" href="{{ url_for('.view', list_id=sl.id) }}">View</a>
+                <a class="btn btn-sm btn-danger" href="{{ url_for('.delete', list_id=sl.id) }}">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
+
+{% block tail %}
+<script>
+$(function() {
+
+    function computeSchedule(startDate, count) {
+        const base = new Date(startDate);
+        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+        let results = [];
+        for (let i = 0; i < count; i++) {
+            let d = new Date(base);
+            d.setDate(base.getDate() + i);
+
+            results.push({
+                weekday: days[d.getDay()],
+                date: d.toISOString().split("T")[0]
+            });
+        }
+        return results;
+    }
+
+    // -------------------------------
+    // MODE SWITCHING
+    // -------------------------------
+    $('.mode-btn').on('click', function() {
+        $('.mode-btn').removeClass('active');
+        $(this).addClass('active');
+
+        let mode = $(this).data('mode');
+        $('.input-mode').hide();
+        $('#' + mode).show();
+    });
+
+    // -------------------------------
+    // SELECT2
+    // -------------------------------
+    $('#recipe-picker').select2({
+        width: '100%',
+        theme: 'bootstrap4',
+        dropdownParent: $('body')
+    });
+
+    // -------------------------------
+    // SELECTED RECIPES LIST
+    // -------------------------------
+    let selected = [];
+
+    function refreshList() {
+        let container = $('#recipe-list');
+        container.empty();
+
+        let startDate = $('#start-date').val();
+        let schedule = computeSchedule(startDate, selected.length);
+
+        selected.forEach((id, index) => {
+            let name = $('#recipe-picker option[value="' + id + '"]').text();
+            let day = schedule[index];
+
+            container.append(`
+                <div class="recipe-item" draggable="true" data-index="${index}">
+                    <strong>${day.weekday} ${day.date}</strong> — ${name}
+                    <button class="btn btn-sm btn-outline-danger float-right remove-btn" data-index="${index}">
+                        Remove
+                    </button>
+                </div>
+            `);
+        });
+
+        $('#recipes-field').val(JSON.stringify(selected));
+    }
+
+    // Remove
+    $('#recipe-list').on('click', '.remove-btn', function() {
+        let index = $(this).data('index');
+        selected.splice(index, 1);
+        refreshList();
+    });
+
+    // drag and drop
+    let dragIndex = null;
+
+    $('#recipe-list').on('dragstart', '.recipe-item', function(e) {
+        dragIndex = $(this).data('index');
+        $(this).addClass('dragging');
+    });
+
+    $('#recipe-list').on('dragend', '.recipe-item', function(e) {
+        $(this).removeClass('dragging');
+        dragIndex = null;
+    });
+
+    $('#recipe-list').on('dragover', '.recipe-item', function(e) {
+        e.preventDefault();
+    });
+
+    $('#recipe-list').on('drop', '.recipe-item', function(e) {
+        e.preventDefault();
+
+        let dropIndex = $(this).data('index');
+        if (dropIndex === dragIndex) return;
+
+        const [moved] = selected.splice(dragIndex, 1);
+        selected.splice(dropIndex, 0, moved);
+
+        refreshList();
+    });
+
+    $('#start-date').on('change', refreshList);
+
+    // -------------------------------
+    // MANUAL ADD
+    // -------------------------------
+    $('#add-manual').on('click', function() {
+        let id = $('#recipe-picker').val();
+        if (id) {
+            selected.push(id);
+            refreshList();
+            $('#recipe-picker').val(null).trigger('change');
+        }
+    });
+
+    // -------------------------------
+    // CSV TEXT IMPORT
+    // -------------------------------
+    $('#import-csv-text').on('click', function() {
+        let text = $('#csv-textarea').val();
+        if (!text.trim()) return;
+
+        fetch('{{ url_for(".parse_csv") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+        })
+        .then(r => r.json())
+        .then(ids => {
+            selected.push(...ids);
+            refreshList();
+        });
+    });
+
+    // -------------------------------
+    // CSV FILE IMPORT
+    // -------------------------------
+    $('#import-csv-file').on('click', function() {
+        let file = $('#csv-file')[0].files[0];
+        if (!file) return;
+
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            let text = e.target.result;
+
+            fetch('{{ url_for(".parse_csv") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            })
+            .then(r => r.json())
+            .then(ids => {
+                selected.push(...ids);
+                refreshList();
+            });
+        };
+        reader.readAsText(file);
+    });
+
+    // -------------------------------
+    // GENERATE
+    // -------------------------------
+    $('#generate-btn').on('click', function() {
+        fetch('{{ url_for(".generate") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                recipes: selected,
+                start_date: $('#start-date').val()
+            })
+        })
+        .then(() => window.location.reload());
+    });
+
+});
+</script>
+
+{% endblock %}

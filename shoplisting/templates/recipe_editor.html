@@ -4,7 +4,7 @@
 <div x-data="recipeEditor()" x-init="init()" class="container mt-4">
 
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 x-text="recipe.id ? 'Edit Recipe' : 'Create Recipe'"></h2>
+        <h4 x-text="recipe.id ? 'Edit Recipe' : 'Create Recipe'"></h2>
         <button class="btn btn-success" @click="save()">Save Recipe</button>
     </div>
 
