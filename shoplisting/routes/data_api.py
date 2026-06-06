@@ -65,6 +65,8 @@ def set_ingredient_category():
         return jsonify({'success': False, 'error': 'no category specified'}), 400
     ing = Ingredient.query.get(ing_id)
     ing.category_id = cat_id
+    db.session.merge(ing)
+    db.session.commit()
     return jsonify({'success':True})
 
 @api_bp.route('/recipe/get')
