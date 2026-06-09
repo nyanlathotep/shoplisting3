@@ -17,6 +17,8 @@ drawsvg = "^2.4.1"
 requests = "^2.34.2"
 pillow = "^12.2.0"
 pylibdmtx = "^0.1.10"
+snakemd = "^2.4.1"
+markdown = "^3.10.2"
 
 [tool.poetry.scripts]
 server = "shoplisting.main:start_server"

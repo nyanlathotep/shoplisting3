@@ -2,15 +2,18 @@ from flask_admin.contrib.sqla.ajax import QueryAjaxModelLoader
 from flask_admin.contrib.sqla import ModelView
 from sqlalchemy.sql import func
 from flask_admin.form import rules
-from shoplisting.model import Category, Ingredient, Recipe, RecipeStep, RecipeItem, Tag, CardPage
+from shoplisting.model import Category, Ingredient, Recipe, RecipeStep, RecipeItem, Tag, CardPage, ShoppingList, ScheduleMeal
 from wtforms.validators import Optional
 from shoplisting.db import db
 from flask_admin import expose
 from flask_admin.base import BaseView
 from flask import request, jsonify, flash, redirect, url_for, Response
 import json, io, zipfile
-from datetime import date
+from datetime import date, timedelta, datetime
 from .svg.svg_helper import generate_svg_batch
+from .slist.csv import get_csv
+from .slist.slist import generate_slist
+import markdown
 
 # class CategoryAjaxLoader(QueryAjaxModelLoader):
 #     def get_list(self, term, offset=0, limit=10):
@@ -182,16 +185,63 @@ class ShoppingListView(BaseView):
     def index(self):
         recipes = Recipe.query.order_by(Recipe.name).all()
         default_date = date.today().isoformat()
+        slists = ShoppingList.query.order_by(ShoppingList.start_date.desc()).all()
         return self.render('sl_picker.html',
             recipes = recipes,
-            default_date = default_date
+            default_date = default_date,
+            shopping_lists = slists
         )
     @expose('/parse_csv', methods=['POST'])
     def parse_csv(self):
-        pass
+        csv = io.StringIO(request.get_json()['text'])
+        recipe_ids = get_csv(csv)
+        return jsonify(recipe_ids)
     @expose('/build_list', methods=['POST'])
     def generate(self):
-        pass
+        data = request.get_json()
+        if len(data['recipes']) == 0:
+            return jsonify({'success': False, 'message': 'no recipes selected'})
+        dateless = data['no_schedule']
+        start_date = date.fromisoformat(data['start_date']) if not dateless else None
+        conflicts = []
+        for offset in range(len(data['recipes'])):
+            if dateless: break
+            day = start_date + timedelta(days = offset)
+            if ScheduleMeal.query.filter_by(day=day).first():
+                conflicts.append(day)
+        if conflicts:
+            conflict_list = ', '.join(datetime.strftime(x, '%Y-%m-%d') for x in conflicts)
+            return jsonify({'success': False, 'message': f'schedule conflicts on {conflict_list}'})
+        md = generate_slist(data['recipes'], start_date)
+        slist = ShoppingList(start_date=start_date, markdown=md)
+        db.session.add(slist)
+        db.session.flush()
+        for offset, recipe_id in enumerate(data['recipes']):
+            day = None if dateless else start_date + timedelta(days = offset)
+            recipe = Recipe.query.get(recipe_id)
+            meal = ScheduleMeal(day = day, slist = slist, recipe = recipe)
+            db.session.add(meal)
+        db.session.commit()
+        return jsonify({'success': True, 'slist': slist.id})
+    @expose('/render_slist')
+    def render_slist(self):
+        slist_id = request.args.get("id", "")
+        if slist_id:
+            slist = ShoppingList.query.get(slist_id)
+        if not slist_id or not slist:
+            return 'no recipe found', 400
+        html = markdown.markdown(slist.markdown)
+        return html
+    @expose('/delete_slist', methods=['POST'])
+    def delete_slist(self):
+        slist_id = request.get_json()
+        if slist_id:
+            slist = ShoppingList.query.get(slist_id)
+        if not slist_id or not slist:
+            return {'success': False, 'message': 'no shopping list found'}
+        db.session.delete(slist)
+        db.session.commit()
+        return jsonify({'success': True})
 
 def init_admin_views(admin, db):
     admin.add_view(ShoppingListView("Shopping List"))

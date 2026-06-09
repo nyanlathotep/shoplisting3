@@ -67,12 +67,17 @@
 
         <!-- Hidden field for POST -->
         <input type="hidden" id="recipes-field" name="recipes">
-
         <hr>
 
         <!-- Start date -->
         <label class="form-label">Start Date</label>
         <input type="date" id="start-date" class="form-control" value="{{ default_date }}">
+        <div class="form-check mt-3">
+            <input class="form-check-input" type="checkbox" id="no-schedule">
+            <label class="form-check-label" for="no-schedule">
+                Do not assign dates (no schedule)
+            </label>
+        </div>
 
         <button id="generate-btn" class="btn btn-success mt-3">Generate Shopping List</button>
 
@@ -98,13 +103,24 @@
             <td>{{ sl.start_date }}</td>
             <td>{{ sl.recipe_count }}</td>
             <td>
-                <a class="btn btn-sm btn-primary" href="{{ url_for('.view', list_id=sl.id) }}">View</a>
-                <a class="btn btn-sm btn-danger" href="{{ url_for('.delete', list_id=sl.id) }}">Delete</a>
+                <a class="btn btn-sm btn-primary" href="{{ url_for('.render_slist', id=sl.id) }}">View</a>
+                <button class="btn btn-sm btn-danger delete-slist-btn"
+                        data-id="{{ sl.id }}">
+                    Delete
+                </button>
             </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+
+<!-- <div id="render-preview" class="card mt-4" style="display:none;">
+    <div class="card-header">
+        <strong>Preview Output (temporary)</strong>
+    </div>
+    <div class="card-body" id="render-preview-body" style="overflow:auto; max-height:600px;">
+    </div>
+</div> -->
 
 {% endblock %}
 
@@ -276,7 +292,7 @@ $(function() {
     // -------------------------------
     // GENERATE
     // -------------------------------
-    $('#generate-btn').on('click', function() {
+    /*$('#generate-btn').on('click', function() {
         fetch('{{ url_for(".generate") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -286,6 +302,118 @@ $(function() {
             })
         })
         .then(() => window.location.reload());
+    });*/
+
+    /*$('#generate-btn').on('click', function() {
+        fetch('{{ url_for(".generate") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                recipes: selected,
+                start_date: $('#start-date').val()
+            })
+        })
+        .then(r => r.text())   // expect HTML, not JSON
+        .then(html => {
+            const panel = document.getElementById('render-preview');
+            const body  = document.getElementById('render-preview-body');
+
+            body.innerHTML = html;
+            panel.style.display = 'block';
+            panel.scrollIntoView({ behavior: 'smooth' });
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Error generating preview");
+        });
+    });*/
+
+    $('#generate-btn').on('click', function() {
+        fetch('{{ url_for(".generate") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                recipes: selected,
+                start_date: $('#start-date').val(),
+                no_schedule: $('#no-schedule').is(':checked')
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                // Flash the error message
+                // Flask-Admin uses Bootstrap alerts, so we inject one
+                const alert = $(`
+                    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                        ${data.message}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                `);
+                $('.container, .card-body').first().prepend(alert);
+                return;
+            }
+
+            // Success → redirect to render endpoint
+            const id = data.slist;
+            window.location = '{{ url_for(".render_slist") }}' + '?id=' + encodeURIComponent(id);
+        })
+        .catch(err => {
+            console.error(err);
+            const alert = $(`
+                <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                    Unexpected error while generating list.
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            `);
+            $('.container, .card-body').first().prepend(alert);
+        });
+    });
+
+    $('.delete-slist-btn').on('click', function() {
+        const id = $(this).data('id');
+
+        fetch('{{ url_for(".delete_slist") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                // Flash the error message
+                const alert = $(`
+                    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                        ${data.message}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                `);
+                $('.container, .card-body').first().prepend(alert);
+                return;
+            }
+
+            // Success → remove the row from the table
+            $(`button.delete-slist-btn[data-id="${id}"]`)
+                .closest('tr')
+                .fadeOut(200, function() { $(this).remove(); });
+        })
+        .catch(err => {
+            console.error(err);
+            const alert = $(`
+                <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                    Unexpected error while deleting list.
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            `);
+            $('.container, .card-body').first().prepend(alert);
+        });
     });
 
 });

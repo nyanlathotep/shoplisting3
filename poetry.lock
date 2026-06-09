@@ -483,6 +483,22 @@ lingua = ["lingua"]
 testing = ["pytest"]
 
 [[package]]
+name = "markdown"
+version = "3.10.2"
+description = "Python implementation of John Gruber's Markdown."
+category = "main"
+optional = false
+python-versions = ">=3.10"
+files = [
+    {file = "markdown-3.10.2-py3-none-any.whl", hash = "sha256:e91464b71ae3ee7afd3017d9f358ef0baf158fd9a298db92f1d4761133824c36"},
+    {file = "markdown-3.10.2.tar.gz", hash = "sha256:994d51325d25ad8aa7ce4ebaec003febcce822c3f8c911e3b17c52f7f589f950"},
+]
+
+[package.extras]
+docs = ["mdx_gh_links (>=0.2)", "mkdocs (>=1.6)", "mkdocs-gen-files", "mkdocs-literate-nav", "mkdocs-nature (>=0.6)", "mkdocs-section-index", "mkdocstrings[python] (>=0.28.3)"]
+testing = ["coverage", "pyyaml"]
+
+[[package]]
 name = "markupsafe"
 version = "3.0.3"
 description = "Safely add untrusted strings to HTML/XML markup."
@@ -832,6 +848,18 @@ socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use-chardet-on-py3 = ["chardet (>=3.0.2,<8)"]
 
 [[package]]
+name = "snakemd"
+version = "2.4.1"
+description = "A markdown generation library for Python."
+category = "main"
+optional = false
+python-versions = "<4.0,>=3.10"
+files = [
+    {file = "snakemd-2.4.1-py3-none-any.whl", hash = "sha256:3f1cc8547dbd5b28114be8c4a933159703ff81f0f1332ef4c03150a74193e60c"},
+    {file = "snakemd-2.4.1.tar.gz", hash = "sha256:574b232a61177d74270cff3d855b4eb8392f21bba7f02287f350daf3ac34c620"},
+]
+
+[[package]]
 name = "sqlalchemy"
 version = "2.0.50"
 description = "Database Abstraction Library"
@@ -1013,4 +1041,4 @@ email = ["email-validator (>=2.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "8ba276b433fa0e7ab5ffda1cb857e94da7aad2410f8995f943d67c0227b3d16f"
+content-hash = "9faf44010be262567b1f6ca52ae315bca891ec742cc2c47fbd64ba0af8515079"

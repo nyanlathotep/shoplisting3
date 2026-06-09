@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, aliased, Session
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import func
 from shoplisting.db import db
-from datetime import datetime
+from datetime import datetime, date
 import hashlib, json, string, re
 from shoplisting.util.math import base36
 
@@ -261,3 +261,20 @@ def cardpage_signature_check(mapper, connection, target):
             )
             .values(page_id=None)
         )
+
+class ScheduleMeal(db.Model):
+    __tablename__ = "meal_schedule"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    day: Mapped[date] = mapped_column(nullable=True)
+    slist_id: Mapped[int] = mapped_column(ForeignKey("shopping_list.id"))
+    slist: Mapped["ShoppingList"] = relationship(back_populates="scheduled_meals")
+    recipe_id: Mapped[int] = mapped_column(ForeignKey("recipe.id"))
+    recipe: Mapped["Recipe"] = relationship()
+
+class ShoppingList(db.Model):
+    __tablename__ = "shopping_list"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    start_date: Mapped[date] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+    markdown: Mapped[str] = mapped_column()
+    scheduled_meals: Mapped[List["ScheduleMeal"]] = relationship(back_populates="slist", cascade="all, delete-orphan") 
