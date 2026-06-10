@@ -35,10 +35,12 @@ import markdown
 #         return query.offset(offset).limit(limit).all()
 
 class CategoryAdmin(ModelView):
-    column_list = ('name', 'parent')
-    column_sortable_list = ('name', ('parent', 'parent.full_path'))
+    column_list = ('name', 'parent_path')
+    column_default_sort = 'name'
+    column_sortable_list = ('name', 'parent_path')
+    column_labels = {'parent_path': 'Parent'}
     column_searchable_list = ('name',)
-    form_excluded_columns = ('children')
+    form_excluded_columns = ('children', 'full_path', 'parent_path')
     form_rules = [
         rules.FieldSet(('name', 'parent', 'display'))
     ]
@@ -52,6 +54,7 @@ class IngredientAdmin(ModelView):
     column_list = ('name', 'category', 'recipe_count')
     column_sortable_list = ('name', ('category', 'category.full_path'), 'recipe_count')
     column_searchable_list = ('name',)
+    column_default_sort = 'category.full_path'
     form_excluded_columns = ('recipe_instances',)
     form_rules = [
         rules.FieldSet(('name', 'category'))

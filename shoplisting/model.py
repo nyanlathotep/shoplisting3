@@ -24,19 +24,20 @@ class Category(db.Model):
     display: Mapped[CategoryDisplay] = mapped_column(Enum(CategoryDisplay),
         server_default=CategoryDisplay.INHERIT.name)
     full_path: Mapped[str] = mapped_column(server_default='')
+    parent_path: Mapped[str] = mapped_column(server_default='')
     def update_full_path(self):
         node = self
         parts = []
         while node:
             parts.append(node.name)
             node = node.parent
-        print(self.id, self.parent_id, self.name, parts)
-        self.full_path = " / ".join(reversed(parts))
-        print(self.full_path)
+        self.full_path = " » ".join(reversed(parts))
+        # end me.
+        self.parent_path = " » ".join(reversed(parts[1:]))
         for child in self.children:
             child.update_full_path()
     def __str__(self):
-        return self.full_path
+        return self.full_path     
 
 # I hate databases
 @event.listens_for(Category, "before_insert")
