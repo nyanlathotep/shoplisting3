@@ -197,8 +197,8 @@ class ShoppingListView(BaseView):
     @expose('/parse_csv', methods=['POST'])
     def parse_csv(self):
         csv = io.StringIO(request.get_json()['text'])
-        recipe_ids = get_csv(csv)
-        return jsonify(recipe_ids)
+        recipe_ids, invalid = get_csv(csv)
+        return jsonify({'recipes': recipe_ids, 'invalid': invalid})
     @expose('/build_list', methods=['POST'])
     def generate(self):
         data = request.get_json()

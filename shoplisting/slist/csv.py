@@ -23,6 +23,7 @@ def get_csv(fp):
   reader = csv.reader(fp)
   header = tuple(x.strip() for x in reader.__next__())
   recipes = []
+  invalid = []
   parser = parsers[header]
   scans = []
   for row in reader:
@@ -32,5 +33,8 @@ def get_csv(fp):
   for scan in scans:
     dmtx, codetype, timestamp = scan
     recipe = Recipe.query.filter_by(dmtx_id=dmtx).first()
-    recipes.append(recipe.id)
-  return recipes
+    if recipe:
+      recipes.append(recipe.id)
+    else:
+      invalid.append(dmtx)
+  return recipes, invalid

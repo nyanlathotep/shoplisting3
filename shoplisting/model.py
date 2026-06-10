@@ -278,4 +278,12 @@ class ShoppingList(db.Model):
     start_date: Mapped[date] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     markdown: Mapped[str] = mapped_column()
-    scheduled_meals: Mapped[List["ScheduleMeal"]] = relationship(back_populates="slist", cascade="all, delete-orphan") 
+    scheduled_meals: Mapped[List["ScheduleMeal"]] = relationship(back_populates="slist", cascade="all, delete-orphan")
+    @hybrid_property
+    def recipe_list(self, full=False):
+        recipe_names = [x.recipe.name for x in self.scheduled_meals]
+        text = ', '.join(recipe_names)
+        if full: return text
+        if len(text) > 80:
+            text = text[:77] + '...'
+        return text
