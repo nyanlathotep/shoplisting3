@@ -23,6 +23,7 @@ class Category(db.Model):
     children: Mapped[List["Category"]] = relationship(back_populates="parent")
     display: Mapped[CategoryDisplay] = mapped_column(Enum(CategoryDisplay),
         server_default=CategoryDisplay.INHERIT.name)
+    # cached string properties of the heirarchy for sorting
     full_path: Mapped[str] = mapped_column(server_default='')
     parent_path: Mapped[str] = mapped_column(server_default='')
     def update_full_path(self):
@@ -39,7 +40,8 @@ class Category(db.Model):
     def __str__(self):
         return self.full_path     
 
-# I hate databases
+# listens for Category insert or .name/.parent update
+# triggers update_full_path to update cached full_path/parent_path
 @event.listens_for(Category, "before_insert")
 def also_full_path_on_insert_because_this_is_hell(mapper, connection, target):
     with Session(bind=connection) as session:
@@ -55,11 +57,9 @@ def category_name_change(target, value, oldvalue, initiator):
     target._needs_path_update = True
 @event.listens_for(db.session, "after_flush_postexec")
 def update_path_values(session, flush_context):
-    print('what')
     for obj in session.identity_map.values():
         if isinstance(obj, Category) and getattr(obj, "_needs_path_update", False):
             obj.update_full_path()
-            print(f'updating {obj.name}')
             del obj._needs_path_update
 
 class Ingredient(db.Model):
@@ -69,7 +69,7 @@ class Ingredient(db.Model):
     category_id: Mapped[int] = mapped_column(ForeignKey("store_category.id"), nullable=True)
     category: Mapped["Category"] = relationship()
     recipe_instances: Mapped[List["RecipeItem"]] = relationship()
-
+    # used for recipe count display on view
     @hybrid_property
     def recipe_count(self):
         return len(self.recipe_instances)
@@ -98,6 +98,7 @@ class Tag(db.Model):
         ps = ''.join(x[0] for x in self.position.name.split('_'))
         return f'<{ps}> {self.name}'
 
+# association table for recipe tags relation
 recipe_tag_table = Table(
     "recipe_tag_table",
     db.metadata,
@@ -142,13 +143,16 @@ class Recipe(db.Model):
     __tablename__ = "recipe"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column()
-    dmtx_id: Mapped[str] = mapped_column(unique=True, nullable=True)
     steps: Mapped[List["RecipeStep"]] = relationship(back_populates="recipe", cascade="all, delete-orphan")
+    # card data
+    dmtx_id: Mapped[str] = mapped_column(unique=True, nullable=True)
     top_note: Mapped[str] = mapped_column(nullable=True)
     bot_note: Mapped[str] = mapped_column(nullable=True)
-    note: Mapped[str] = mapped_column(nullable=True)
-    remark: Mapped[str] = mapped_column(nullable=True)
     tags: Mapped[List[Tag]] = relationship(secondary=recipe_tag_table)
+    # note rendered on shopping list
+    note: Mapped[str] = mapped_column(nullable=True)
+    # database-only note
+    remark: Mapped[str] = mapped_column(nullable=True)
     # gathers all relevant data for the printed card into an object
     @hybrid_property
     def card_data(self):
@@ -213,6 +217,7 @@ class RecipeItem(db.Model):
     ingredient_id: Mapped[int] = mapped_column(ForeignKey("ingredient.id"))
     ingredient: Mapped["Ingredient"] = relationship(back_populates="recipe_instances")
 
+# stable hash values for cards, stored to decide when cards need generation
 class CardSig(db.Model):
     __tablename__ = "card_signature"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -231,6 +236,7 @@ class CardPage(db.Model):
     data: Mapped[str] = mapped_column()
     affirmed: Mapped[bool] = mapped_column(server_default='0')
     signatures: Mapped[List["CardSig"]] = relationship(back_populates="page", passive_deletes=True)
+    # list of recipe names for display on view
     @hybrid_property
     def recipe_list(self, full=False):
         recipe_names = [x.recipe.name for x in self.signatures]
@@ -246,6 +252,9 @@ class CardPage(db.Model):
         self.affirmed = True
         db.session.commit()
 
+# delete associated signatures only if the page is not affirmed
+# affirmed signatures are meant to be cards in circulation
+# so they need to be kept even if the svg is dumped
 @event.listens_for(CardPage, "before_delete")
 def cardpage_signature_check(mapper, connection, target):
     # delete unaffirmed child signatures
@@ -263,6 +272,7 @@ def cardpage_signature_check(mapper, connection, target):
             .values(page_id=None)
         )
 
+# a meal scheduled on a specific day associated with a shopping list
 class ScheduleMeal(db.Model):
     __tablename__ = "meal_schedule"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -279,6 +289,7 @@ class ShoppingList(db.Model):
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     markdown: Mapped[str] = mapped_column()
     scheduled_meals: Mapped[List["ScheduleMeal"]] = relationship(back_populates="slist", cascade="all, delete-orphan")
+    # list of associated meals for display on the view
     @hybrid_property
     def recipe_list(self, full=False):
         recipe_names = [x.recipe.name for x in self.scheduled_meals]
