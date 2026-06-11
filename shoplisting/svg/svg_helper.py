@@ -3,8 +3,7 @@ from shoplisting.db import db
 from flask import current_app
 import os.path
 from .svg_render import SvgPage
-
-FONT_PATH = os.path.join(current_app.static_folder, 'LiberationSans-Rg.otf')
+from shoplisting.config.config import ConfigTree, load_config
 
 svg_cfg = {
     'page': {
@@ -15,7 +14,7 @@ svg_cfg = {
     },
     'typeface': {
         'family': 'Liberation Sans',
-        'ttfpath': FONT_PATH,
+        'ttfpath': 'LiberationSans-Rg.otf',
         'card': {
             'flagsize': 16,
             'notesize': 18,
@@ -49,14 +48,17 @@ svg_cfg = {
 }
 
 def generate_svg_batch(recipes):
-    page_batch = svg_cfg['page']['cardgrid']
+    cfg = load_config()
+    cfg.default = ConfigTree({'svg': svg_cfg })
+    cfg['svg.typeface.ttfpath'] = os.path.join(current_app.static_folder, cfg['svg.typeface.ttfpath'])
+    page_batch = cfg['svg.page.cardgrid']
     page_batch = page_batch[0] * page_batch[1]
     pages = []
     for i in range(0, len(recipes), 12):
         batch = recipes[i:min(i+12,len(recipes))]
         signatures = []
         recipe_ids = set()
-        page = SvgPage(svg_cfg)
+        page = SvgPage(cfg)
         for recipe in batch:
             card = recipe.card_data
             page.addcard(card)

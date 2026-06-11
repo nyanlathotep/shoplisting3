@@ -59,14 +59,14 @@ def transform_bb(bb, bb_l):
   return np.concatenate((offset,size))
 
 class Configurable:
-  def __init__(self, cfg):
+  def __init__(self, cfg, prefix='svg'):
     self._cfgtree = cfg
+    self.prefix = prefix
   def cfg(self, key, default=None):
+    if self.prefix:
+      key = '.'.join((self.prefix,key))
     try:
-      node = self._cfgtree
-      for k in key.split('.'):
-        node = node[k]
-      return node
+      return self._cfgtree[key]
     except KeyError:
       if (default == None):
         raise
