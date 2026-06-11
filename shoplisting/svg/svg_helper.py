@@ -5,7 +5,7 @@ import os.path
 from .svg_render import SvgPage
 from shoplisting.config.config import ConfigTree, load_config
 
-svg_cfg = {
+svg_default_cfg = {
     'page': {
         'size': [8.5, 11],
         'dpi': 96,
@@ -49,7 +49,7 @@ svg_cfg = {
 
 def generate_svg_batch(recipes):
     cfg = load_config()
-    cfg.default = ConfigTree({'svg': svg_cfg })
+    cfg.default = ConfigTree({'svg': svg_default_cfg })
     cfg['svg.typeface.ttfpath'] = os.path.join(current_app.static_folder, cfg['svg.typeface.ttfpath'])
     page_batch = cfg['svg.page.cardgrid']
     page_batch = page_batch[0] * page_batch[1]

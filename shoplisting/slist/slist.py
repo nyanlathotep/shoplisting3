@@ -174,14 +174,14 @@ def render_markdown(slist, cfg):
         render_category(cat, doc, cfg, level=0, dateless=dateless)
     return str(doc)
 
-default_slist_config = {
+slist_default_config = {
     'min_heading': 4,
     'max_heading': 2
 }
 
 def generate_slist(recipes, single_items, start_date):
     cfg = load_config()
-    cfg.default = ConfigTree({'slist': default_slist_config })
+    cfg.default = ConfigTree({'slist': slist_default_config })
     slist = MDList(start_date)
     for recipe_id in recipes:
         slist.add_recipe(recipe_id)

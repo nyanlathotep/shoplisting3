@@ -51,8 +51,7 @@ def load_config():
     cfg.deserialize_values(entries)
     return cfg
 
-def save_config(tree):
-    cfg = ConfigTree(tree)
+def save_config(cfg):
     for key, value in cfg.serialize_values().items():
         entry = ConfigEntry.query.get(key)
         if entry:

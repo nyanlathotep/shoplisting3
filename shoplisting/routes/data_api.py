@@ -1,9 +1,13 @@
 from shoplisting.db import db
-from shoplisting.model import Category, Ingredient, Tag, Recipe, RecipeStep, RecipeItem
+from shoplisting.model import Category, Ingredient, Tag, Recipe, RecipeStep, RecipeItem, ConfigEntry
 from flask import Blueprint, jsonify, request
 from sqlalchemy.sql import func
 from shoplisting.slist.slist import generate_slist
 import markdown
+from shoplisting.admin import holiday_default_cfg
+from shoplisting.slist.slist import slist_default_config
+from shoplisting.svg.svg_helper import svg_default_cfg
+from shoplisting.config.config import load_config, ConfigTree, save_config
 
 api_bp = Blueprint('api', __name__)
 
@@ -185,6 +189,24 @@ def slist_test():
         ids.append(item.id)
     slist = generate_slist([], ids, None)
     return markdown.markdown(slist)
+
+@api_bp.route('/config/init')
+def init_config():
+    force = request.args.get("force", "")
+    default_cfg = {
+        'holiday': holiday_default_cfg,
+        'slist': slist_default_config,
+        'svg': svg_default_cfg
+    }
+    default = ConfigTree(default_cfg)
+    if force == 'yes':
+        save_config(default)
+        return 'OK!'
+    cfg = load_config()
+    overrides = cfg.serialize_values()
+    default.deserialize_values(overrides)
+    save_config(default)
+    return 'ok'
 
 @api_bp.route('/oh/no')
 def nuclear_option():

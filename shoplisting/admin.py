@@ -382,7 +382,8 @@ class ConfigAdmin(ModelView):
     @expose('/set_config/', methods=['POST'])
     def set_config(self):
         data = request.get_json()
-        save_config(data)
+        cfg = ConfigTree(data)
+        save_config(cfg)
         return jsonify({'success': True})
 
 def init_admin_views(admin, db):
