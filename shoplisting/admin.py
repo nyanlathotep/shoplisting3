@@ -252,7 +252,7 @@ class ConfigAdmin(ModelView):
     column_list = ('key', 'value')
     @expose('/get_config/')
     def get_config(self):
-        return jsonify(load_config())
+        return jsonify(load_config().tree)
     @expose('/set_config/', methods=['POST'])
     def set_config(self):
         data = request.get_json()

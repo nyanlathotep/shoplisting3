@@ -49,7 +49,7 @@ def load_config():
         entries[entry.key] = entry.value
     cfg = ConfigTree()
     cfg.deserialize_values(entries)
-    return cfg.tree
+    return cfg
 
 def save_config(tree):
     cfg = ConfigTree(tree)
