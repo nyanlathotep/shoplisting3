@@ -1,4 +1,4 @@
-from shoplisting.model import Recipe, Category, Ingredient
+from shoplisting.model import Recipe, Category, Ingredient, CategoryDisplay
 from datetime import date, datetime, timedelta
 import snakemd
 
@@ -8,16 +8,26 @@ class MDCategory():
         self.parent = parent
         self.subcategories = {}
         self.ingredients = []
+    def get_display(self):
+        display = self.category.display
+        if display != CategoryDisplay.INHERIT:
+            return display
+        return self.parent.get_display()
     def emit_list(self):
         data = {
             'name': self.category.name,
             'categories': [],
             'ingredients': []
         }
+        display = self.get_display()
         for cid, cat in self.subcategories.items():
-            data['categories'].append(cat.emit_list())
+            subcat = cat.emit_list()
+            if subcat: data['categories'].append(subcat)
         for ing in self.ingredients:
+            if display == CategoryDisplay.HIDE and not ing.special:
+                continue
             data['ingredients'].append(ing.emit_list())
+        if not data['ingredients'] and not data['categories']: return None
         return data
 
 class MDIngredient():
@@ -60,6 +70,8 @@ class MDList():
         self.recipes = []
         self.ingredients = {}
         self.subcategories = {}
+    def get_display(self):
+        return CategoryDisplay.SHOW
     def add_recipe(self, recipe_id):
         recipe = Recipe.query.get(recipe_id)
         if self.current_date:
@@ -102,7 +114,9 @@ class MDList():
         for recipe in self.recipes:
             data['recipes'].append(recipe.emit_list())
         for cid, category in self.subcategories.items():
-            data['categories'].append(category.emit_list())
+            subcat = category.emit_list()
+            if subcat:
+                data['categories'].append(subcat)
         return data
 
 def render_category(category, doc, level=0, dateless=False):
@@ -113,10 +127,11 @@ def render_category(category, doc, level=0, dateless=False):
         if ing['recipes']:
             if dateless:
                 days = len(ing['recipes'])
+                days = f'{days} recipes'
             else:
                 days = ', '.join(datetime.strftime(recipe.date, '%a') for recipe in ing['recipes'])
             if ing['special']:
-                days = '★ ' + days
+                days = f'★ {days}'
             name = f'{name} ({days})'
         ing_list.append(name)
     doc.add_block(
