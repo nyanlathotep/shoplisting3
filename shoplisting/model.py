@@ -149,6 +149,7 @@ class Recipe(db.Model):
     top_note: Mapped[str] = mapped_column(nullable=True)
     bot_note: Mapped[str] = mapped_column(nullable=True)
     tags: Mapped[List[Tag]] = relationship(secondary=recipe_tag_table)
+    cardsig: Mapped[str] = mapped_column()
     # note rendered on shopping list
     note: Mapped[str] = mapped_column(nullable=True)
     # database-only note
@@ -172,15 +173,16 @@ class Recipe(db.Model):
         return data
     # computes a stable hash of the card_data
     # for determining what cards need reprinting
-    @hybrid_property
-    def card_sig(self):
+    def get_cardsig(self):
         dat = self.card_data
         dat['tags'].sort(key=lambda x: x['name'])
         dat = json.dumps(dat, sort_keys=True)
         return hashlib.sha256(dat.encode('ascii')).hexdigest()
+    def update_cardsig(self):
+        self.cardsig = self.get_cardsig()
     # uses cardsigs to determine what cards have changed
     def outdated(self):
-        current_sig = self.card_sig
+        current_sig = self.cardsig
         last_sig = CardSig.query \
             .filter_by(recipe_id=self.id) \
             .filter(CardSig.affirmed_at.isnot(None)) \
@@ -195,6 +197,39 @@ def assign_dmtx_id(mapper, connection, target):
         with Session(bind=connection) as session:
             target.dmtx_id = unique_dmtx_id(session, target)
             session.commit()
+# update cardsig on insert
+@event.listens_for(Recipe, "before_insert")
+def recipe_insert_listener(mapper, connection, target):
+    with Session(bind=connection) as session:
+        target.update_cardsig()
+        session.commit()
+# listen for the million billion things that change cardsig
+@event.listens_for(Recipe.name, "set")
+def recipe_name_change(target, value, oldvalue, initiator):
+    if value == oldvalue: return
+    target._needs_sig_update = True
+@event.listens_for(Recipe.top_note, "set")
+def recipe_tnote_change(target, value, oldvalue, initiator):
+    if value == oldvalue: return
+    target._needs_sig_update = True
+@event.listens_for(Recipe.bot_note, "set")
+def recipe_bnote_change(target, value, oldvalue, initiator):
+    if value == oldvalue: return
+    target._needs_sig_update = True
+@event.listens_for(Recipe.tags, "append")
+def recipe_tag_add(target, value, oldvalue, initiator):
+    target._needs_sig_update = True
+@event.listens_for(Recipe.tags, "remove")
+def recipe_tag_del(target, value, oldvalue, initiator):
+    target._needs_sig_update = True
+# update cardsig on flush
+@event.listens_for(db.session, "after_flush_postexec")
+def recipe_change_listener(session, flush_context):
+    for obj in session.identity_map.values():
+        if isinstance(obj, Recipe) and getattr(obj, "_needs_sig_update", False):
+            obj.update_cardsig()
+            del obj._needs_path_update
+# ooh look at me, I'm an ORM, what do I do, manage objects? no.
 
 # recipe subcomponents
 class RecipeStep(db.Model):

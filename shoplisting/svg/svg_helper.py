@@ -71,7 +71,7 @@ def generate_svg_batch(recipes):
                 continue
             recipe_ids.add(recipe.id)
             signatures.append(CardSig(
-                signature = recipe.card_sig,
+                signature = recipe.cardsig,
                 recipe = recipe,
                 page = card_page
             ))

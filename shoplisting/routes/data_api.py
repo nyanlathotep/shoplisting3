@@ -169,6 +169,13 @@ def recipe_card_data():
         cards.append(card)
     return(jsonify(cards))
 
+@api_bp.route('/recipe/recompute_signatures')
+def recipe_recompute_sigs():
+    for recipe in Recipe.query.all():
+        recipe.update_cardsig()
+    db.session.commit()
+    return 'ok'
+
 @api_bp.route('/oh/no')
 def nuclear_option():
     for recipe in Recipe.query.all():
