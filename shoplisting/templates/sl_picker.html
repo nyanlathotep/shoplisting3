@@ -144,8 +144,16 @@
 {% block tail %}
 <script>
 $(function() {
-
     function flashError(message) {
+        const container = $('.container, .card-body').first();
+
+        // Remove older alerts if more than 3 exist
+        const alerts = container.find('.alert-danger');
+        if (alerts.length >= 3) {
+            // remove the oldest (last one)
+            alerts.last().remove();
+        }
+
         const alert = $(`
             <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
                 ${message}
@@ -155,7 +163,7 @@ $(function() {
             </div>
         `);
 
-        $('.container, .card-body').first().prepend(alert);
+        container.prepend(alert);
 
         window.scrollTo({
             top: 0,

@@ -1,0 +1,122 @@
+{% extends 'admin/model/list.html' %}
+
+{% block model_menu_bar %}
+    {% set menu = super() %}
+    {{ menu.replace('</ul>', '') | safe }}
+    <li class="nav-item"><button class="nav-link" style="background-color:#007486;color:white;" id="edit-config-btn">Import Config</button></li>
+    </ul>
+{% endblock %}
+
+{% block body %}
+    {{ super() }}
+    <div class="modal fade" id="configModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+    
+            <div class="modal-header">
+            <h5 class="modal-title">Edit Configuration</h5>
+            <button type="button" class="close" data-dismiss="modal">
+                <span>&times;</span>
+            </button>
+            </div>
+    
+            <div class="modal-body">
+            <textarea id="config-json" class="form-control" rows="20"
+                        style="font-family: monospace;"></textarea>
+            </div>
+    
+            <div class="modal-footer">
+            <button type="button" class="btn btn-secondary"
+                    data-dismiss="modal">Cancel</button>
+            <button type="button" id="save-config-btn"
+                    class="btn btn-primary">Save</button>
+            </div>
+    
+        </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block tail %}
+    {{ super() }}
+    <style>
+        .modal-dialog {
+            margin-top: 180px !important;
+        }
+    </style>
+    <script>
+        function flashError(message) {
+            const container = $('.container, .card-body').first();
+
+            // Remove older alerts if more than 3 exist
+            const alerts = container.find('.alert-danger');
+            if (alerts.length >= 3) {
+                // remove the oldest (last one)
+                alerts.last().remove();
+            }
+
+            const alert = $(`
+                <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                    ${message}
+                    <button type="button" class="close" data-dismiss="alert">
+                        <span>&times;</span>
+                    </button>
+                </div>
+            `);
+
+            container.prepend(alert);
+
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+        // Open modal and load config
+        $('#edit-config-btn').on('click', function() {
+            fetch('{{ url_for(".get_config") }}')
+                .then(r => r.json())
+                .then(data => {
+                    // Pretty-print JSON
+                    $('#config-json').val(JSON.stringify(data, null, 4));
+                    $('#configModal').modal('show');
+                })
+                .catch(err => {
+                    console.error(err);
+                    flashError("Failed to load configuration.");
+                });
+        });
+
+        // Save config
+        $('#save-config-btn').on('click', function() {
+            let raw = $('#config-json').val();
+            let parsed;
+
+            try {
+                parsed = JSON.parse(raw);
+            } catch (e) {
+                flashError("Invalid JSON: " + e.message);
+                return;
+            }
+
+            fetch('{{ url_for(".set_config") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(parsed)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    flashError(data.message);
+                    return;
+                }
+
+                $('#configModal').modal('hide');
+                location.reload();
+            })
+            .catch(err => {
+                console.error(err);
+                flashError("Unexpected error while saving configuration.");
+            });
+        });
+    </script>
+{% endblock %}

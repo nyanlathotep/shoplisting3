@@ -2,7 +2,7 @@ from flask_admin.contrib.sqla.ajax import QueryAjaxModelLoader
 from flask_admin.contrib.sqla import ModelView
 from sqlalchemy.sql import func
 from flask_admin.form import rules
-from shoplisting.model import Category, Ingredient, Recipe, RecipeStep, RecipeItem, Tag, CardPage, ShoppingList, ScheduleMeal
+from shoplisting.model import Category, Ingredient, Recipe, RecipeStep, RecipeItem, Tag, CardPage, ShoppingList, ScheduleMeal, ConfigEntry
 from wtforms.validators import Optional
 from shoplisting.db import db
 from flask_admin import expose
@@ -13,6 +13,7 @@ from datetime import date, timedelta, datetime
 from .svg.svg_helper import generate_svg_batch
 from .slist.csv import get_csv
 from .slist.slist import generate_slist
+from .config.config import load_config, save_config
 import markdown
 
 # class CategoryAjaxLoader(QueryAjaxModelLoader):
@@ -246,6 +247,18 @@ class ShoppingListView(BaseView):
         db.session.commit()
         return jsonify({'success': True})
 
+class ConfigAdmin(ModelView):
+    list_template = 'config_list.html'
+    column_list = ('key', 'value')
+    @expose('/get_config/')
+    def get_config(self):
+        return jsonify(load_config())
+    @expose('/set_config/', methods=['POST'])
+    def set_config(self):
+        data = request.get_json()
+        save_config(data)
+        return jsonify({'success': True})
+
 def init_admin_views(admin, db):
     admin.add_view(ShoppingListView("Shopping List"))
     admin.add_view(CategoryAdmin(Category, db))
@@ -253,3 +266,4 @@ def init_admin_views(admin, db):
     admin.add_view(RecipeAdmin(Recipe, db))
     admin.add_view(TagAdmin(Tag, db))
     admin.add_view(CardBatchView("Cards"))
+    admin.add_view(ConfigAdmin(ConfigEntry, db, name = "Config"))

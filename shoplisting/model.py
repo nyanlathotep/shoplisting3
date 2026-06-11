@@ -1,6 +1,6 @@
 from typing import List
 import enum
-from sqlalchemy import Enum, ForeignKey, Table, Column, select, literal_column, update, event
+from sqlalchemy import Enum, ForeignKey, Table, Column, select, literal_column, update, event, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship, aliased, Session
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import func
@@ -287,3 +287,9 @@ class ShoppingList(db.Model):
         if len(text) > 80:
             text = text[:77] + '...'
         return text
+
+class ConfigEntry(db.Model):
+    __tablename__ = "config_entry"
+    #id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(primary_key=True)
+    value: Mapped[str] = mapped_column()
