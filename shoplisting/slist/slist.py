@@ -127,7 +127,6 @@ def render_category(category, doc, level=0, dateless=False):
 
 def render_markdown(slist):
     doc = snakemd.Document()
-    print(dir(doc))
     start_date = slist['recipes'][0]['date']
     dateless = False
     if start_date:
@@ -162,6 +161,5 @@ def generate_slist(recipes, single_items, start_date):
         slist.add_single_item(ing_id)
     slist.construct_categories()
     slist = slist.emit_list()
-    print(slist)
     md = render_markdown(slist)
     return md

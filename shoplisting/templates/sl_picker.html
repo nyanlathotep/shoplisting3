@@ -90,7 +90,7 @@
         <tr>
             <th>ID</th>
             <th>Created</th>
-            <th>Start Date</th>
+            <th>Days</th>
             <th>Recipes</th>
             <th>Actions</th>
         </tr>
@@ -100,7 +100,17 @@
         <tr>
             <td>{{ sl.id }}</td>
             <td>{{ sl.created_at }}</td>
-            <td>{{ sl.start_date }}</td>
+            <td>
+                {% if sl.start_date %}
+                    {% if sl.start_date == sl.end_date %}
+                        {{ sl.start_date }}
+                    {% else %}
+                        {{ sl.start_date }} - {{ sl.end_date }}
+                    {% endif %}
+                {% else %}
+                    no schedule
+                {% endif %}
+            </td>
             <td>{{ sl.recipe_list }}</td>
             <td>
                 <a class="btn btn-sm btn-primary" href="{{ url_for('.render_slist', id=sl.id) }}">View</a>

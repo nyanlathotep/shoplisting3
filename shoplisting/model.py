@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, aliased, Session
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import func
 from shoplisting.db import db
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import hashlib, json, string, re
 from shoplisting.util.math import base36
 
@@ -334,6 +334,11 @@ class ShoppingList(db.Model):
         if len(text) > 80:
             text = text[:77] + '...'
         return text
+    @hybrid_property
+    def end_date(self):
+        if self.start_date:
+            n_days = len(self.scheduled_meals)
+            return self.start_date + timedelta(days = n_days-1)
 
 class ConfigEntry(db.Model):
     __tablename__ = "config_entry"
