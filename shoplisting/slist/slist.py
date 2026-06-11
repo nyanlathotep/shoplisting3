@@ -1,4 +1,4 @@
-from shoplisting.model import Recipe, Category
+from shoplisting.model import Recipe, Category, Ingredient
 from datetime import date, datetime, timedelta
 import snakemd
 
@@ -21,10 +21,11 @@ class MDCategory():
         return data
 
 class MDIngredient():
-    def __init__(self, ingredient, recipe):
+    def __init__(self, ingredient, recipe=None, special=False):
         self.ingredient = ingredient
-        self.recipes = [recipe]
+        self.recipes = [recipe] if recipe else []
         self.category = None
+        self.special = special
     def add_recipe(self, recipe):
         self.recipes.append(recipe)
     def get_heirarchy(self):
@@ -35,9 +36,11 @@ class MDIngredient():
             parent = parent.parent
         return reversed(heritage)
     def emit_list(self):
+        show_days = len(self.recipes) > 1 or len(self.recipes) > 0 and self.special
         return {
             'name': self.ingredient.name,
-            'recipes': self.recipes if len(self.recipes) > 1 else None
+            'recipes': self.recipes if show_days else None,
+            'special': self.special
         }
 
 class MDRecipe():
@@ -73,6 +76,12 @@ class MDList():
                     self.ingredients[ing.id].add_recipe(md_recipe)
                 else:
                     self.ingredients[ing.id] = MDIngredient(ing, md_recipe)
+    def add_single_item(self, item_id):
+        ing = Ingredient.query.get(item_id)
+        if ing.id in self.ingredients:
+            self.ingredients[ing.id].special = True
+        else:
+            self.ingredients[ing.id] = MDIngredient(ing, special=True)
     def construct_categories(self):
         for ing_id, ing in self.ingredients.items():
             node = self
@@ -106,6 +115,8 @@ def render_category(category, doc, level=0, dateless=False):
                 days = len(ing['recipes'])
             else:
                 days = ', '.join(datetime.strftime(recipe.date, '%a') for recipe in ing['recipes'])
+            if ing['special']:
+                days = '★ ' + days
             name = f'{name} ({days})'
         ing_list.append(name)
     doc.add_block(
@@ -143,10 +154,12 @@ def render_markdown(slist):
         render_category(cat, doc, level=0, dateless=dateless)
     return str(doc)
 
-def generate_slist(recipes, start_date):
+def generate_slist(recipes, single_items, start_date):
     slist = MDList(start_date)
     for recipe_id in recipes:
         slist.add_recipe(recipe_id)
+    for ing_id in single_items:
+        slist.add_single_item(ing_id)
     slist.construct_categories()
     slist = slist.emit_list()
     print(slist)

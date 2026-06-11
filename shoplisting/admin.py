@@ -134,7 +134,7 @@ class LandingPage(AdminIndexView):
         return jsonify(notifs)
     @expose('/api/single_item/get')
     def get_loose_items(self):
-        items = SingleItem.query.order_by(SingleItem.created_at.desc()).all()
+        items = SingleItem.query.filter_by(claimed=False).order_by(SingleItem.created_at.desc()).all()
         payload = [{'name': item.ingredient.name, 'id': item.id} for item in items]
         return jsonify(payload)
     @expose('/api/single_item/add', methods=['POST'])
@@ -337,10 +337,15 @@ class ShoppingListView(BaseView):
         if conflicts:
             conflict_list = ', '.join(datetime.strftime(x, '%Y-%m-%d') for x in conflicts)
             return jsonify({'success': False, 'message': f'schedule conflicts on {conflict_list}'})
-        md = generate_slist(data['recipes'], start_date)
+        single_items = SingleItem.query.filter_by(claimed=False).all()
+        ingredients = [x.ingredient.id for x in single_items]
+        md = generate_slist(data['recipes'], ingredients, start_date)
         slist = ShoppingList(start_date=start_date, markdown=md)
         db.session.add(slist)
         db.session.flush()
+        for item in single_items:
+            item.claimed = True
+            item.slist = slist
         for offset, recipe_id in enumerate(data['recipes']):
             day = None if dateless else start_date + timedelta(days = offset)
             recipe = Recipe.query.get(recipe_id)
