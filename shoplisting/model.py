@@ -68,7 +68,7 @@ class Ingredient(db.Model):
     name: Mapped[str] = mapped_column()
     category_id: Mapped[int] = mapped_column(ForeignKey("store_category.id"), nullable=True)
     category: Mapped["Category"] = relationship()
-    recipe_instances: Mapped[List["RecipeItem"]] = relationship()
+    recipe_instances: Mapped[List["RecipeItem"]] = relationship(back_populates="ingredient")
     # used for recipe count display on view
     @hybrid_property
     def recipe_count(self):
@@ -324,6 +324,7 @@ class ShoppingList(db.Model):
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     markdown: Mapped[str] = mapped_column()
     scheduled_meals: Mapped[List["ScheduleMeal"]] = relationship(back_populates="slist", cascade="all, delete-orphan")
+    single_items: Mapped[List["SingleItem"]] = relationship(back_populates="slist")
     # list of associated meals for display on the view
     @hybrid_property
     def recipe_list(self, full=False):
@@ -339,3 +340,13 @@ class ConfigEntry(db.Model):
     #id: Mapped[int] = mapped_column(primary_key=True)
     key: Mapped[str] = mapped_column(primary_key=True)
     value: Mapped[str] = mapped_column()
+
+class SingleItem(db.Model):
+    __tablename__ = "single_item"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ingredient_id: Mapped[int] = mapped_column(ForeignKey("ingredient.id"))
+    ingredient: Mapped["Ingredient"] = relationship()
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+    claimed: Mapped[bool] = mapped_column(default=False)
+    slist_id: Mapped[int] = mapped_column(ForeignKey("shopping_list.id"),nullable=True)
+    slist: Mapped["ShoppingList"] = relationship(back_populates="single_items")

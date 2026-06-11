@@ -1,11 +1,12 @@
 from flask_admin.contrib.sqla.ajax import QueryAjaxModelLoader
 from flask_admin.contrib.sqla import ModelView
 from sqlalchemy.sql import func
+from sqlalchemy import select
 from flask_admin.form import rules
-from shoplisting.model import Category, Ingredient, Recipe, RecipeStep, RecipeItem, Tag, CardPage, ShoppingList, ScheduleMeal, ConfigEntry
+from shoplisting.model import Category, Ingredient, Recipe, RecipeStep, RecipeItem, Tag, CardPage, ShoppingList, ScheduleMeal, ConfigEntry, SingleItem
 from wtforms.validators import Optional
 from shoplisting.db import db
-from flask_admin import expose
+from flask_admin import expose, AdminIndexView
 from flask_admin.base import BaseView
 from flask import request, jsonify, flash, redirect, url_for, Response
 import json, io, zipfile
@@ -13,8 +14,9 @@ from datetime import date, timedelta, datetime
 from .svg.svg_helper import generate_svg_batch
 from .slist.csv import get_csv
 from .slist.slist import generate_slist
-from .config.config import load_config, save_config
+from .config.config import load_config, save_config, ConfigTree
 import markdown
+import random
 
 # class CategoryAjaxLoader(QueryAjaxModelLoader):
 #     def get_list(self, term, offset=0, limit=10):
@@ -35,6 +37,125 @@ import markdown
 #             print(f"{obj.full_path} -> {dist}")
 #         return query.offset(offset).limit(limit).all()
 
+holiday_default_cfg = {'rules': [
+    {'date': [None, 12, 25], 'message': 'Merry Christmas!'},
+    {'date': [None, None, None], 'message': 'you won a prize!', 'chance': 0.25}
+]}
+
+def holiday_notifier():
+    cfg = load_config()
+    cfg.default = ConfigTree({'holiday': holiday_default_cfg })
+    rules = cfg['holiday.rules']
+    today = date.today()
+    for rule in rules:
+        date_parts = zip(rule['date'], (today.year, today.month, today.day))
+        match = False not in [True if not x[0] else x[0] == x[1] for x in date_parts]
+        if not match: continue
+        if 'chance' in rule and random.random() > rule['chance']: continue
+        return [{
+            'message': rule['message'],
+            'level': 'success'
+        }]
+    return None
+
+def ingredient_notifier():
+    stmt = select(func.count()).select_from(Ingredient).where(Ingredient.category_id == None)
+    ing_without_cat = db.session.scalar(stmt)
+    if ing_without_cat == 0: return None
+    template = '{val} ingredients are missing categories.' if ing_without_cat > 1 else '{val} ingredient is missing its category.'
+    return [{
+        'url': '/admin/ingredient/',
+        'message': template.format(val=ing_without_cat),
+        'level': 'warning'
+    }]
+
+def plan_notifier():
+    today = date.today()
+    stmt = select(func.count()).select_from(ScheduleMeal).where(ScheduleMeal.day > today)
+    pending_meals = db.session.scalar(stmt)
+    if pending_meals > 2: return None
+    template = 'Only {val} pending meals remaining.' if pending_meals > 1 else 'Only {val} pending meal remaining.'
+    return [{
+        'url': '/admin/shoppinglistview/',
+        'message': template.format(val=pending_meals),
+        'level': 'warning'
+    }]
+
+def card_notifier():
+    recipes = Recipe.query.all()
+    outdated = 0
+    for r in recipes:
+        if r.outdated(): outdated += 1
+    if outdated == 0: return None
+    template = '{val} cards need printing.' if outdated > 1 else '{val} card needs printing.'
+    return [{
+        'url': '/admin/cardbatchview/',
+        'message': template.format(val=outdated),
+        'level': 'warning'
+    }]
+
+
+notification_providers = [holiday_notifier, plan_notifier, ingredient_notifier, card_notifier]
+
+class LandingPage(AdminIndexView):
+    @expose('/')
+    def index(self):
+        return self.render('landing_page.html')
+    @expose('/api/current_slist')
+    def get_active_meal_plan(self):
+        slists = ShoppingList.query.all()
+        today = date.today()
+        active_list = None
+        for slist in slists:
+            if not slist.start_date: continue
+            start_date = slist.start_date
+            end_date = start_date + timedelta(days=len(slist.scheduled_meals)-1)
+            if start_date <= today and today <= end_date:
+                active_list = slist
+                break
+        if active_list:
+            data = {'today': datetime.strftime(today, '%Y-%m-%d'), 'meals': []}
+            for offset, meal in enumerate(active_list.scheduled_meals):
+                data['meals'].append({
+                    'date': datetime.strftime(start_date+timedelta(days=offset), '%Y-%m-%d'),
+                    'weekday': datetime.strftime(start_date+timedelta(days=offset), '%A'),
+                    'meal': meal.recipe.name
+                })
+            return jsonify(data)
+        else:
+            return jsonify({})
+    @expose('/api/notifications')
+    def get_notifications(self):
+        notifs = []
+        for provider in notification_providers:
+            result = provider()
+            if result:
+                notifs.extend(result)
+        return jsonify(notifs)
+    @expose('/api/single_item/get')
+    def get_loose_items(self):
+        items = SingleItem.query.order_by(SingleItem.created_at.desc()).all()
+        payload = [{'name': item.ingredient.name, 'id': item.id} for item in items]
+        return jsonify(payload)
+    @expose('/api/single_item/add', methods=['POST'])
+    def add_loose_item(self):
+        data = request.get_json()
+        ing = Ingredient.query.filter_by(name=data['name']).first()
+        if not(ing):
+            return jsonify({'success': False, 'message': 'ingredient not found'})
+        si = SingleItem(ingredient = ing)
+        db.session.add(si)
+        db.session.commit()
+        return jsonify({'success': True, 'id': si.id})
+    @expose('/api/single_item/delete', methods=['POST'])
+    def remove_loose_item(self):
+        data = request.get_json()
+        item = SingleItem.query.get(data['id'])
+        if not(item):
+            return jsonify({'success': False, 'message': 'item not found'})
+        db.session.delete(item)
+        db.session.commit()
+        return jsonify({'success': True})
 class CategoryAdmin(ModelView):
     column_list = ('name', 'parent_path')
     column_default_sort = 'name'

@@ -30,8 +30,8 @@ with app.app_context():
         db_conn.enable_load_extension(False)
     db.create_all()
 
-    from shoplisting.admin import init_admin_views
-    admin = Admin(app, name='shoplisting')
+    from shoplisting.admin import init_admin_views, LandingPage
+    admin = Admin(app, name='shoplisting', index_view=LandingPage())
     init_admin_views(admin, db)
 
 app.register_blueprint(api_bp, url_prefix='/api')

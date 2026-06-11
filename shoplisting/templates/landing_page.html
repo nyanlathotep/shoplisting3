@@ -1,0 +1,370 @@
+{% extends "admin/master.html" %}
+
+{% block body %}
+
+<div class="container my-4">
+
+    <!-- UNIFIED SCHEDULE -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <strong>Meal Schedule</strong>
+        </div>
+        <div class="card-body" id="meal-schedule">
+            <!-- Filled dynamically -->
+        </div>
+    </div>
+
+    <!-- NOTIFICATIONS (hidden if empty) -->
+    <div class="card mb-4" id="notifications-card" style="display:none;">
+        <div class="card-header bg-info text-white">
+            <strong>Notifications</strong>
+        </div>
+        <div class="card-body" id="notifications"></div>
+    </div>
+
+    <!-- LOOSE ITEMS -->
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <strong>Items for Next Shopping List</strong>
+        </div>
+        <div class="card-body">
+
+            <div class="position-relative">
+                <div class="input-group mb-3">
+                    <input type="text" id="loose-item-input" class="form-control"
+                           placeholder="Add item…">
+                    <div class="input-group-append">
+                        <button class="btn btn-success" id="add-loose-item">Add</button>
+                    </div>
+                </div>
+                <div id="loose-item-warning"
+                    class="text-danger mt-1"
+                    style="display:none; font-size: 0.9rem;">
+                    New ingredients cannot be added.
+                </div>
+                <div id="loose-item-suggestions"
+                     class="list-group position-absolute"
+                     style="z-index: 2000; width: 100%; display: none;">
+                </div>
+            </div>
+
+            <ul class="list-group" id="loose-items-list"></ul>
+
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+        
+            <div class="modal-header">
+                <h5 class="modal-title">Remove Item</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                <span>&times;</span>
+                </button>
+            </div>
+        
+            <div class="modal-body" id="confirm-delete-body">
+                Are you sure you want to remove this item?
+            </div>
+        
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" id="confirm-delete-btn" class="btn btn-danger">Remove</button>
+            </div>
+        
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block tail %}
+<style>
+    #loose-item-suggestions .list-group-item {
+        cursor: pointer;
+    }
+    #loose-item-suggestions .highlight {
+        background-color: #f0f0f0;
+    }
+</style>
+<script>
+$(function() {
+
+    // function current_iso_date() {
+    //     let d = new Date();
+    //     return d.getFullYear()+'-'+(d.getMonth()+1).toString().padStart(2,'0')+'-'+d.getDate().toString().padStart(2,'0');
+    // }
+
+    // -------------------------------
+    // UNIFIED SCHEDULE
+    // -------------------------------
+    fetch('{{ url_for("admin.get_active_meal_plan") }}')
+        .then(r => r.json())
+        .then(resp => {
+            let container = $('#meal-schedule');
+            container.empty();
+
+            const today = resp.today;
+            const plan = resp.meals;
+            if (!plan || !plan.length) {
+                container.append('<p class="font-weight-bold">Tonight: Nothing</p>');
+                return;
+            }
+            //const today = current_iso_date();
+
+            plan.forEach(day => {
+                let isToday = (day.date === today);
+                let isPast = (day.date < today);
+                let prefix = '';
+                let classes = "p-1 mb-1 rounded";
+                if (isToday) {
+                    classes += " font-weight-bold";
+                    prefix = 'Tonight: '
+                } else if (isPast) {
+                    classes += " text-muted";
+                } else {
+                    //classes += " bg-light";
+                }
+
+                container.append(`
+                    <div class="${classes}">
+                        <p class="mb-1">${prefix}${day.weekday} — ${day.meal}</p>
+                        <p class="mb-0">${day.details || ''}</p>
+                    </div>
+                `);
+            });
+        });
+
+    // -------------------------------
+    // NOTIFICATIONS (hide if empty)
+    // -------------------------------
+    fetch('{{ url_for("admin.get_notifications") }}')
+        .then(r => r.json())
+        .then(list => {
+            let card = $('#notifications-card');
+            let container = $('#notifications');
+            container.empty();
+
+            if (!list.length) {
+                card.hide();
+                return;
+            }
+
+            card.show();
+
+            list.forEach(n => {
+                let html = `<div class="alert alert-${n.level || 'info'}">`;
+                html += n.url ? `<a href="${n.url}">${n.message}</a>` : n.message;
+                html += '</div>';
+                container.append(html);
+            });
+        });
+
+    // -------------------------------
+    // LOOSE ITEMS
+    // -------------------------------
+    function refreshLooseItems() {
+        fetch('{{ url_for("admin.get_loose_items") }}')
+            .then(r => r.json())
+            .then(items => {
+                let list = $('#loose-items-list');
+                list.empty();
+
+                if (!items.length) {
+                    list.append('<li class="list-group-item text-muted">No loose items.</li>');
+                    return;
+                }
+
+                items.forEach(item => {
+                    list.append(`
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            ${item.name}
+                            <button class="btn btn-sm btn-danger remove-loose-item" data-name="${item.name}" data-id="${item.id}">
+                                Remove
+                            </button>
+                        </li>
+                    `);
+                });
+            });
+    }
+
+    refreshLooseItems();
+
+    $('#add-loose-item').on('click', function() {
+        let name = $('#loose-item-input').val().trim();
+        if (!name) return;
+
+        fetch('{{ url_for("admin.add_loose_item") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        })
+        .then(() => {
+            $('#loose-item-input').val('');
+            refreshLooseItems();
+        });
+    });
+
+    let pendingDeleteId = null;
+
+    $('#loose-items-list').on('click', '.remove-loose-item', function() {
+        pendingDeleteId = $(this).data('id');
+        let name = $(this).data('name');
+
+        $('#confirm-delete-body').text(
+            `Are you sure you want to remove ${name} from the pending items?`
+        );
+
+        $('#confirmDeleteModal').modal('show');
+    });
+    
+    $('#confirm-delete-btn').on('click', function() {
+        $('#confirmDeleteModal').modal('hide');
+        let id = pendingDeleteId;
+
+        fetch('{{ url_for("admin.remove_loose_item") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        })
+        .then(() => refreshLooseItems());
+    });
+
+    // -------------------------------
+    // LOOSE ITEM AUTOCOMPLETE (Alpine-style)
+    // -------------------------------
+    let suggestionBox = $('#loose-item-suggestions');
+    let looseInput = $('#loose-item-input');
+    let suggestionTimeout = null;
+    let suggestions = [];
+    let highlightIndex = -1;
+
+    function isExactMatch(name) {
+        return suggestions.includes(name.trim());
+    }
+
+    function renderSuggestions() {
+        suggestionBox.empty();
+
+        if (!suggestions.length) {
+            suggestionBox.hide();
+            return;
+        }
+
+        suggestions.forEach((name, i) => {
+            suggestionBox.append(`
+                <button class="list-group-item list-group-item-action ${i === highlightIndex ? 'highlight' : ''}"
+                        data-name="${name}">
+                    ${name}
+                </button>
+            `);
+        });
+
+        suggestionBox.show();
+    }
+
+    function searchIngredients(q) {
+        fetch(`/api/ingredient/search?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(results => {
+                // results is a flat list of strings
+                suggestions = results;
+                highlightIndex = -1;
+                renderSuggestions();
+                updateAddButtonState();
+            });
+    }
+
+    // Debounced input
+    looseInput.on('input', function() {
+        let q = looseInput.val().trim();
+
+        clearTimeout(suggestionTimeout);
+
+        if (!q) {
+            suggestions = [];
+            renderSuggestions();
+            updateAddButtonState();
+            return;
+        }
+
+        suggestionTimeout = setTimeout(() => searchIngredients(q), 300);
+    });
+
+    // Keyboard navigation
+    looseInput.on('keydown', function(e) {
+        if (!suggestions.length) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            highlightIndex = (highlightIndex + 1) % suggestions.length;
+            renderSuggestions();
+        }
+
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            highlightIndex = (highlightIndex - 1 + suggestions.length) % suggestions.length;
+            renderSuggestions();
+        }
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (highlightIndex >= 0) {
+                let name = suggestions[highlightIndex];
+                looseInput.val(name);
+                suggestionBox.hide();
+                updateAddButtonState();
+                $('#add-loose-item').click();
+            }
+        }
+
+        if (e.key === 'Escape') {
+            suggestions = [];
+            renderSuggestions();
+        }
+    });
+
+    // Click suggestion (mousedown ensures blur doesn't kill it)
+    suggestionBox.on('mousedown', '.list-group-item', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        let name = $(this).data('name');
+        looseInput.val(name);
+        suggestionBox.hide();
+        updateAddButtonState();
+        $('#add-loose-item').click();
+    });
+
+    // Blur closes suggestions AFTER click has a chance to fire
+    looseInput.on('blur', function() {
+        setTimeout(() => {
+            suggestionBox.hide();
+            updateAddButtonState();
+        }, 150);
+    });
+
+    function updateAddButtonState() {
+        let val = looseInput.val().trim();
+
+        if (!val) {
+            $('#add-loose-item').prop('disabled', true);
+            $('#loose-item-warning').hide();
+            return;
+        }
+
+        if (isExactMatch(val)) {
+            $('#add-loose-item').prop('disabled', false);
+            $('#loose-item-warning').hide();
+        } else {
+            $('#add-loose-item').prop('disabled', true);
+            $('#loose-item-warning').show();
+        }
+    }
+
+});
+</script>
+{% endblock %}
