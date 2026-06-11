@@ -2,6 +2,8 @@ from shoplisting.db import db
 from shoplisting.model import Category, Ingredient, Tag, Recipe, RecipeStep, RecipeItem
 from flask import Blueprint, jsonify, request
 from sqlalchemy.sql import func
+from shoplisting.slist.slist import generate_slist
+import markdown
 
 api_bp = Blueprint('api', __name__)
 
@@ -175,6 +177,14 @@ def recipe_recompute_sigs():
         recipe.update_cardsig()
     db.session.commit()
     return 'ok'
+
+@api_bp.route('/slist/test')
+def slist_test():
+    ids = []
+    for item in Ingredient.query.all():
+        ids.append(item.id)
+    slist = generate_slist([], ids, None)
+    return markdown.markdown(slist)
 
 @api_bp.route('/oh/no')
 def nuclear_option():

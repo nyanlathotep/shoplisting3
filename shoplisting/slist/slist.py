@@ -66,6 +66,7 @@ class MDRecipe():
 
 class MDList():
     def __init__(self, start_date):
+        self.start_date = start_date
         self.current_date = start_date
         self.recipes = []
         self.ingredients = {}
@@ -108,6 +109,7 @@ class MDList():
             node.ingredients.append(ing)
     def emit_list(self):
         data = {
+            'start_date': self.start_date,
             'recipes': [],
             'categories': []
         }
@@ -120,7 +122,7 @@ class MDList():
         return data
 
 def render_category(category, doc, level=0, dateless=False):
-    doc.add_heading(category['name'], 4 if level == 0 else 5)
+    doc.add_heading(category['name'], 2 if level == 0 else min(4,2+level))
     ing_list = []
     for ing in category['ingredients']:
         name = ing['name']
@@ -142,14 +144,14 @@ def render_category(category, doc, level=0, dateless=False):
 
 def render_markdown(slist):
     doc = snakemd.Document()
-    start_date = slist['recipes'][0]['date']
+    start_date = slist['start_date']
     dateless = False
     if start_date:
         start_date = datetime.strftime(start_date, '%Y-%m-%d')
     else:
         start_date = ''
         dateless = True
-    doc.add_heading(f'Shopping List {start_date}', 4)
+    doc.add_heading(f'Shopping List {start_date}', 2)
     rows = []
     notes = []
     for recipe in slist['recipes']:
