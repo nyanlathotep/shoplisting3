@@ -190,7 +190,7 @@ class IngredientAdmin(ModelView):
 class RecipeAdmin(ModelView):
     create_template = 'recipe_editor.html'
     edit_template = 'recipe_editor.html'
-    column_exclude_list = ('dmtx_id',)
+    column_exclude_list = ('dmtx_id','cardsig')
     column_searchable_list = ('name',)
 
 class TagAdmin(ModelView):
