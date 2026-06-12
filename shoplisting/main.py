@@ -2,8 +2,8 @@ from flask import Flask, render_template
 from flask_migrate import Migrate
 from flask_admin import Admin
 from sqlalchemy import event
-from shoplisting.db import db
 import glob, os.path
+from shoplisting.db import db
 from .routes.data_api import api_bp
 
 app = Flask(__name__)

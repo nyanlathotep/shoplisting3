@@ -1,5 +1,5 @@
-from collections import defaultdict
 import json
+from collections import defaultdict
 from shoplisting.model import ConfigEntry
 from shoplisting.db import db
 

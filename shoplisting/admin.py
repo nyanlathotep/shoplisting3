@@ -1,23 +1,21 @@
-from flask_admin.contrib.sqla.ajax import QueryAjaxModelLoader
-from flask_admin.contrib.sqla import ModelView
-from sqlalchemy.sql import func
 from sqlalchemy import select
+from sqlalchemy.sql import func
+from flask import request, jsonify, flash, redirect, url_for, Response
+from flask_admin import expose, AdminIndexView
+from flask_admin.contrib.sqla import ModelView
+from flask_admin.contrib.sqla.ajax import QueryAjaxModelLoader
+from flask_admin.base import BaseView
 from flask_admin.form import rules
 from flask_admin.model.template import EndpointLinkRowAction
-from shoplisting.model import Category, Ingredient, Recipe, RecipeStep, RecipeItem, Tag, CardPage, ShoppingList, ScheduleMeal, ConfigEntry, SingleItem
 from wtforms.validators import Optional
-from shoplisting.db import db
-from flask_admin import expose, AdminIndexView
-from flask_admin.base import BaseView
-from flask import request, jsonify, flash, redirect, url_for, Response
-import json, io, zipfile
+import json, io, zipfile, markdown, random
 from datetime import date, timedelta, datetime
+from shoplisting.model import Category, Ingredient, Recipe, RecipeStep, RecipeItem, Tag, CardPage, ShoppingList, ScheduleMeal, ConfigEntry, SingleItem
+from shoplisting.db import db
 from .svg.svg_helper import generate_svg_batch
 from .slist.csv import get_csv
 from .slist.slist import generate_slist
 from .config.config import load_config, save_config, ConfigTree
-import markdown
-import random
 
 # class CategoryAjaxLoader(QueryAjaxModelLoader):
 #     def get_list(self, term, offset=0, limit=10):

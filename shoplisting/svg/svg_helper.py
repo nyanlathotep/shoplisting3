@@ -1,9 +1,9 @@
-from shoplisting.model import CardPage, CardSig
-from shoplisting.db import db
 from flask import current_app
 import os.path
-from .svg_render import SvgPage
+from shoplisting.model import CardPage, CardSig
+from shoplisting.db import db
 from shoplisting.config.config import ConfigTree, load_config
+from .svg_render import SvgPage
 
 svg_default_cfg = {
     'page': {

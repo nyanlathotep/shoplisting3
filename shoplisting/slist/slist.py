@@ -1,6 +1,6 @@
-from shoplisting.model import Recipe, Category, Ingredient, CategoryDisplay
-from datetime import date, datetime, timedelta
 import snakemd
+from datetime import date, datetime, timedelta
+from shoplisting.model import Recipe, Category, Ingredient, CategoryDisplay
 from shoplisting.config.config import ConfigTree, load_config
 
 class MDCategory():

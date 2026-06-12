@@ -1,12 +1,11 @@
-from typing import List
-import enum
 from sqlalchemy import Enum, ForeignKey, Table, Column, select, literal_column, update, event, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship, aliased, Session
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import func
-from shoplisting.db import db
+from typing import List
+import enum, hashlib, json, string, re
 from datetime import datetime, date, timedelta
-import hashlib, json, string, re
+from shoplisting.db import db
 from shoplisting.util.math import base36
 
 class CategoryDisplay(enum.Enum):

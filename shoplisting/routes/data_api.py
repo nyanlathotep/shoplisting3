@@ -1,13 +1,13 @@
+from sqlalchemy.sql import func
+from flask import Blueprint, jsonify, request
+import markdown
 from shoplisting.db import db
 from shoplisting.model import Category, Ingredient, Tag, Recipe, RecipeStep, RecipeItem, ConfigEntry
-from flask import Blueprint, jsonify, request
-from sqlalchemy.sql import func
-from shoplisting.slist.slist import generate_slist
-import markdown
 from shoplisting.admin import holiday_default_cfg
 from shoplisting.slist.slist import slist_default_config
 from shoplisting.svg.svg_helper import svg_default_cfg
 from shoplisting.config.config import load_config, ConfigTree, save_config
+from shoplisting.slist.slist import generate_slist
 
 api_bp = Blueprint('api', __name__)
 

@@ -1,6 +1,6 @@
-from shoplisting.db import db
 from flask import Blueprint, jsonify, request
 import requests
+from shoplisting.db import db
 from .svg_helper import SvgPage
 
 svg_api_bp = Blueprint('svg_api', __name__)
