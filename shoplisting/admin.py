@@ -19,25 +19,6 @@ from .config.config import load_config, save_config, ConfigTree
 from shoplisting.slist.slist import slist_default_config
 from shoplisting.svg.svg_helper import svg_default_cfg
 
-# class CategoryAjaxLoader(QueryAjaxModelLoader):
-#     def get_list(self, term, offset=0, limit=10):
-#         query = self.session.query(self.model)
-#         dist = func.fuzzy_damlev(self.model.full_path, term)
-#         query = query.order_by(dist)
-#         q = (
-#             self.session.query(self.model, dist.label("dist"))
-#             .order_by(dist)
-#             .offset(offset)
-#             .limit(limit)
-#         )
-
-#         results = q.all()
-
-#         # Debug print
-#         for obj, dist in results:
-#             print(f"{obj.full_path} -> {dist}")
-#         return query.offset(offset).limit(limit).all()
-
 holiday_default_cfg = {'rules': [
     {'date': [None, 12, 25], 'message': 'Merry Christmas!'},
     {'date': [None, None, None], 'message': 'you won a prize!', 'chance': 0.25}
@@ -63,7 +44,7 @@ def ingredient_notifier():
     stmt = select(func.count()).select_from(Ingredient).where(Ingredient.category_id == None)
     ing_without_cat = db.session.scalar(stmt)
     if ing_without_cat == 0: return None
-    template = '{val} ingredients are missing categories.' if ing_without_cat > 1 else '{val} ingredient is missing its category.'
+    template = '{val} ingredients are missing categories.' if ing_without_cat == 1 else '{val} ingredient is missing its category.'
     return [{
         'url': '/admin/ingredient/',
         'message': template.format(val=ing_without_cat),
@@ -75,7 +56,7 @@ def plan_notifier():
     stmt = select(func.count()).select_from(ScheduleMeal).where(ScheduleMeal.day > today)
     pending_meals = db.session.scalar(stmt)
     if pending_meals > 2: return None
-    template = 'Only {val} pending meals remaining.' if pending_meals > 1 else 'Only {val} pending meal remaining.'
+    template = 'Only {val} pending meals remaining.' if pending_meals == 1 else 'Only {val} pending meal remaining.'
     return [{
         'url': '/admin/shoppinglistview/',
         'message': template.format(val=pending_meals),
@@ -88,7 +69,7 @@ def card_notifier():
     for r in recipes:
         if r.outdated(): outdated += 1
     if outdated == 0: return None
-    template = '{val} cards need printing.' if outdated > 1 else '{val} card needs printing.'
+    template = '{val} cards need printing.' if outdated == 1 else '{val} card needs printing.'
     return [{
         'url': '/admin/cardbatchview/',
         'message': template.format(val=outdated),
