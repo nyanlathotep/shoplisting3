@@ -70,7 +70,8 @@ class MDList():
         self.start_date = start_date
         self.current_date = start_date
         self.recipes = []
-        self.ingredients = {}
+        self.all_ingredients = {}
+        self.ingredients = []
         self.subcategories = {}
     def get_display(self):
         return CategoryDisplay.SHOW
@@ -86,18 +87,18 @@ class MDList():
         for step in recipe.steps:
             for item in step.items:
                 ing = item.ingredient
-                if ing.id in self.ingredients:
-                    self.ingredients[ing.id].add_recipe(md_recipe)
+                if ing.id in self.all_ingredients:
+                    self.all_ingredients[ing.id].add_recipe(md_recipe)
                 else:
-                    self.ingredients[ing.id] = MDIngredient(ing, md_recipe)
+                    self.all_ingredients[ing.id] = MDIngredient(ing, md_recipe)
     def add_single_item(self, item_id):
         ing = Ingredient.query.get(item_id)
-        if ing.id in self.ingredients:
-            self.ingredients[ing.id].special = True
+        if ing.id in self.all_ingredients:
+            self.all_ingredients[ing.id].special = True
         else:
-            self.ingredients[ing.id] = MDIngredient(ing, special=True)
+            self.all_ingredients[ing.id] = MDIngredient(ing, special=True)
     def construct_categories(self):
-        for ing_id, ing in self.ingredients.items():
+        for ing_id, ing in self.all_ingredients.items():
             node = self
             for cat_id in ing.get_heirarchy():
                 if cat_id in node.subcategories:
@@ -112,21 +113,22 @@ class MDList():
         data = {
             'start_date': self.start_date,
             'recipes': [],
+            'ingredients': [],
             'categories': []
         }
         for recipe in self.recipes:
             data['recipes'].append(recipe.emit_list())
+        for ing in self.ingredients:
+            data['ingredients'].append(ing.emit_list())
         for cid, category in self.subcategories.items():
             subcat = category.emit_list()
             if subcat:
                 data['categories'].append(subcat)
         return data
 
-def render_category(category, doc, cfg, level=0, dateless=False):
-    max_head, min_head = cfg['slist.max_heading'], cfg['slist.min_heading']
-    doc.add_heading(category['name'], max_head if level == 0 else min(min_head,max_head+level))
+def render_ing_list(ingredients, doc, cfg, dateless=False):
     ing_list = []
-    for ing in category['ingredients']:
+    for ing in ingredients:
         name = ing['name']
         if ing['recipes']:
             if dateless:
@@ -138,9 +140,15 @@ def render_category(category, doc, cfg, level=0, dateless=False):
                 days = f'★ {days}'
             name = f'{name} ({days})'
         ing_list.append(name)
+    if not ing_list: return
     doc.add_block(
         snakemd.MDList(ing_list, ordered=False)
     )
+
+def render_category(category, doc, cfg, level=0, dateless=False):
+    max_head, min_head = cfg['slist.max_heading'], cfg['slist.min_heading']
+    doc.add_heading(category['name'], max_head if level == 0 else min(min_head,max_head+level))
+    render_ing_list(category['ingredients'], doc, cfg, dateless)
     category['categories'].sort(key=lambda x:x['name'])
     for subcat in category['categories']:
         render_category(subcat, doc, cfg, level+1, dateless)
@@ -168,6 +176,9 @@ def render_markdown(slist, cfg):
            doc.add_block(
                snakemd.MDList([snakemd.Inline(recipe['note'], italics=True)], ordered=False)
            )
+    if slist['ingredients']:
+        doc.add_block(snakemd.Paragraph([snakemd.Inline('Uncategorized Ingredients', bold=True)]))
+    render_ing_list(slist['ingredients'], doc, cfg, dateless)
     slist['categories'].sort(key=lambda x:x['name'])
     for cat in slist['categories']:
         doc.add_horizontal_rule()
