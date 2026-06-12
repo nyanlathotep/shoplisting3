@@ -3,6 +3,7 @@ from flask_admin.contrib.sqla import ModelView
 from sqlalchemy.sql import func
 from sqlalchemy import select
 from flask_admin.form import rules
+from flask_admin.model.template import EndpointLinkRowAction
 from shoplisting.model import Category, Ingredient, Recipe, RecipeStep, RecipeItem, Tag, CardPage, ShoppingList, ScheduleMeal, ConfigEntry, SingleItem
 from wtforms.validators import Optional
 from shoplisting.db import db
@@ -190,8 +191,23 @@ class IngredientAdmin(ModelView):
 class RecipeAdmin(ModelView):
     create_template = 'recipe_editor.html'
     edit_template = 'recipe_editor.html'
-    column_exclude_list = ('dmtx_id','cardsig')
+    column_exclude_list = ('dmtx_id','cardsig','head_left','head_mid','head_right','head_desc')
     column_searchable_list = ('name',)
+    column_extra_row_actions = [
+        EndpointLinkRowAction("fa fa-print", '.render_recipe')
+    ]
+    @expose('/render')
+    def render_recipe(self):
+        recipe_id = request.args.get("id", "")
+        if recipe_id:
+            recipe = Recipe.query.get(recipe_id)
+        if not recipe_id or not recipe:
+            return 'no recipe found', 400
+        return self.render(
+            'recipe_print.html',
+            recipe = recipe
+        )
+
 
 class TagAdmin(ModelView):
     form_widget_args = {

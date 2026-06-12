@@ -14,19 +14,35 @@
         <div class="card-body">
 
             <label class="form-label">Recipe Name</label>
-            <input class="form-control mb-3" x-model="recipe.name">
-
-            <label class="form-label">Card Top Note (Time)</label>
-            <input class="form-control mb-3" x-model="recipe.top_note">
-
-            <label class="form-label">Card Bottom Note (Recipe Source)</label>
-            <input class="form-control mb-3" x-model="recipe.bot_note">
-
-            <label class="form-label">Shopping List Note</label>
-            <input class="form-control mb-3" x-model="recipe.note">
+            <input class="form-control mb-1" x-model="recipe.name">
 
             <label class="form-label">Remark (database only)</label>
-            <input class="form-control mb-3" x-model="recipe.remark">
+            <input class="form-control mb-1" x-model="recipe.remark">
+
+            <label class="form-label">Shopping List Note</label>
+            <input class="form-control mb-1" x-model="recipe.note">
+
+            <p><strong>Card Fields</strong></p>
+
+            <label class="form-label">Top Note (Time)</label>
+            <input class="form-control mb-1" x-model="recipe.top_note">
+
+            <label class="form-label">Bottom Note (Recipe Source)</label>
+            <input class="form-control mb-1" x-model="recipe.bot_note">
+
+            <p><strong>Recipe Printout Fields</strong></p>
+
+            <label class="form-label">Header Left</label>
+            <input class="form-control mb-1" x-model="recipe.head_left">
+
+            <label class="form-label">Header Middle</label>
+            <input class="form-control mb-1" x-model="recipe.head_mid">
+
+            <label class="form-label">Header Right</label>
+            <input class="form-control mb-1" x-model="recipe.head_right">
+
+            <label class="form-label">Header Description</label>
+            <input class="form-control mb-1" x-model="recipe.head_desc">
 
         </div>
     </div>

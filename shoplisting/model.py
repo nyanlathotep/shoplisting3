@@ -154,6 +154,11 @@ class Recipe(db.Model):
     note: Mapped[str] = mapped_column(nullable=True)
     # database-only note
     remark: Mapped[str] = mapped_column(nullable=True)
+    # recipe sheet fields
+    head_left: Mapped[str] = mapped_column(nullable=True)
+    head_mid: Mapped[str] = mapped_column(nullable=True)
+    head_right: Mapped[str] = mapped_column(nullable=True)
+    head_desc: Mapped[str] = mapped_column(nullable=True)
     # gathers all relevant data for the printed card into an object
     @hybrid_property
     def card_data(self):
@@ -189,6 +194,18 @@ class Recipe(db.Model):
             .order_by(CardSig.affirmed_at.desc()).first()
         if not last_sig: return True
         return current_sig != last_sig.signature
+    # @hybrid_property
+    # def head_left(self):
+    #     return '3 hours???'
+    # @hybrid_property
+    # def head_mid(self):
+    #     return 'preheat to 425????'
+    # @hybrid_property
+    # def head_right(self):
+    #     return '6??? servings'
+    # @hybrid_property
+    # def head_desc(self):
+    #     return 'whoa this is a description of the recipe or something'
 
 # auto-assigns a dmtx ID when inserting recipes
 @event.listens_for(Recipe, "before_insert")
@@ -207,21 +224,21 @@ def recipe_insert_listener(mapper, connection, target):
 @event.listens_for(Recipe.name, "set")
 def recipe_name_change(target, value, oldvalue, initiator):
     if value == oldvalue: return
-    target._needs_sig_update = True
+    target._needs_path_update = True
 @event.listens_for(Recipe.top_note, "set")
 def recipe_tnote_change(target, value, oldvalue, initiator):
     if value == oldvalue: return
-    target._needs_sig_update = True
+    target._needs_path_update = True
 @event.listens_for(Recipe.bot_note, "set")
 def recipe_bnote_change(target, value, oldvalue, initiator):
     if value == oldvalue: return
-    target._needs_sig_update = True
+    target._needs_path_update = True
 @event.listens_for(Recipe.tags, "append")
-def recipe_tag_add(target, value, oldvalue, initiator):
-    target._needs_sig_update = True
+def recipe_tag_add(target, value, initiator):
+    target._needs_path_update = True
 @event.listens_for(Recipe.tags, "remove")
-def recipe_tag_del(target, value, oldvalue, initiator):
-    target._needs_sig_update = True
+def recipe_tag_del(target, value, initiator):
+    target._needs_path_update = True
 # update cardsig on flush
 @event.listens_for(db.session, "after_flush_postexec")
 def recipe_change_listener(session, flush_context):

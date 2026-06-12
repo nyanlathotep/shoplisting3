@@ -1,0 +1,129 @@
+<html>
+    <head>
+        <style>
+            .recipe-print {
+                font-family: Georgia, serif;
+                font-size: 12pt;
+                line-height: 1.25;
+                max-width: 800px;
+                margin: 0 auto;
+            }
+
+            .recipe-header {
+                font-size: 1.3rem;
+                font-weight: bold;
+                margin-bottom: 0.2rem;
+            }
+
+            .recipe-meta {
+                font-size: 0.95rem;
+                margin-bottom: 0.2rem;
+            }
+
+            .recipe-grid {
+                display: grid;
+                grid-template-columns: 0.6in 0.6in 0.8in 1fr;
+                grid-auto-rows: auto;
+                gap: 0.1rem 0.3rem;
+            }
+
+            .recipe-subheader {
+                grid-column: 1 / -1;
+                font-weight: bold;
+                margin-top: 0.4rem;
+                margin-bottom: 0.1rem;
+            }
+
+            .recipe-instruction {
+                grid-column: 1 / -1;
+                font-weight: bold;
+                margin: 0.2rem 0;
+            }
+
+            .ingredient-row {
+                padding: 0.05rem 0;
+            }
+
+            .ingredient-row:nth-child(even) {
+                background: #f7f7f7;
+            }
+
+            .fraction {
+                font-feature-settings: "frac";
+            }
+
+            /* Print tweaks */
+            @media print {
+                body {
+                    margin: 0;
+                    padding: 0;
+                }
+                .recipe-print {
+                    padding: 0.3in;
+                }
+            }
+        </style>
+        <script>
+            function renderFractions(root) {
+                root.querySelectorAll('.fraction').forEach(el => {
+                    el.innerHTML = el.textContent.replace(
+                        /(\d+)\s*\/\s*(\d+)/g,
+                        '<span style="font-feature-settings: \'frac\'">$1/$2</span>'
+                    );
+                });
+            }
+            renderFractions(document);
+        </script>
+    </head>
+    <body>
+        <div class="recipe-print">
+
+            <!-- Title -->
+            <div class="recipe-header">{{ recipe.name }}</div>
+        
+            <!-- Three‑item header -->
+            {% if recipe.head_left or recipe.head_mid or recipe.head_right %}
+            <div class="recipe-meta">
+                {% if recipe.head_left %}
+                    <strong>{{ recipe.head_left }}</strong>
+                {% endif %}
+                {% if recipe.head_mid %}
+                    • {{ recipe.head_mid }}
+                {% endif %}
+                {% if recipe.head_right %}
+                    • <strong>{{ recipe.head_right }}</strong>
+                {% endif %}
+            </div>
+            {% endif %}
+        
+            <!-- Description -->
+            {% if recipe.head_desc %}
+            <div class="recipe-meta">{{ recipe.head_desc }}</div>
+            {% endif %}
+        
+            <div class="recipe-grid">
+        
+                {% for step in recipe.steps %}
+        
+                    <!-- Step header -->
+                    <div class="recipe-subheader">{{ step.instruction }}</div>
+        
+                    {% if step.items %}
+                        {% for item in step.items %}
+                            <div class="ingredient-row" style="grid-column: 1 / -1;">
+                                <div class="recipe-grid ingredient-inner">
+                                    <div></div>
+                                    <div class="recipe-amount fraction">{{ item.amount }}</div>
+                                    <div class="recipe-unit">{{ item.unit }}</div>
+                                    <div class="recipe-ingredient">{{ item.ingredient.name }}</div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+        
+                {% endfor %}
+        
+            </div>
+        </div>
+    </body>
+</html>

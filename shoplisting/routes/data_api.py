@@ -89,6 +89,10 @@ def load_json():
     data['bot_note'] = recipe.bot_note
     data['note'] = recipe.note
     data['remark'] = recipe.remark
+    data['head_left'] = recipe.head_left
+    data['head_mid'] = recipe.head_mid
+    data['head_right'] = recipe.head_right
+    data['head_desc'] = recipe.head_desc
     data['tags'] = [x.id for x in recipe.tags]
     data['steps'] = []
     for step in recipe.steps:
@@ -118,6 +122,10 @@ def save_json():
     recipe.bot_note = data.get('bot_note', '')
     recipe.note = data.get('note', '')
     recipe.remark = data.get('remark', '')
+    recipe.head_left = data.get('head_left', '')
+    recipe.head_right = data.get('head_right', '')
+    recipe.head_mid = data.get('head_mid', '')
+    recipe.head_desc = data.get('head_desc', '')
 
     db.session.add(recipe)
     db.session.flush()
