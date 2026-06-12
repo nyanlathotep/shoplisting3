@@ -6,13 +6,13 @@ authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.10"
 flask = "^3.1.3"
 sqlalchemy = "^2.0.50"
 flask-sqlalchemy = "^3.1.1"
 flask-migrate = "^4.1.0"
 flask-admin = {extras = ["peewee"], version = "^2.2.0"}
-numpy = "^2.4.6"
+numpy = "<2.3"
 drawsvg = "^2.4.1"
 requests = "^2.34.2"
 pillow = "^12.2.0"
