@@ -163,25 +163,25 @@ def save_json():
     db.session.commit()
     return jsonify({'success': True, 'redirect': '/admin/recipe/', 'new_ingredients': new_ingredients})
 
-@api_bp.route('/recipe/card_data')
-def recipe_card_data():
-    cards = []
-    for recipe in Recipe.query.all():
-        card = {
-            'name': recipe.name,
-            'top_note': recipe.top_note,
-            'bot_note': recipe.bot_note,
-            'id': recipe.id,
-            'tags': []
-        }
-        for tag in recipe.tags:
-            card['tags'].append({
-                'name': tag.name,
-                'color': tag.color,
-                'position': tag.position.name
-            })
-        cards.append(card)
-    return(jsonify(cards))
+# @api_bp.route('/recipe/card_data')
+# def recipe_card_data():
+#     cards = []
+#     for recipe in Recipe.query.all():
+#         card = {
+#             'name': recipe.name,
+#             'top_note': recipe.top_note,
+#             'bot_note': recipe.bot_note,
+#             'id': recipe.id,
+#             'tags': []
+#         }
+#         for tag in recipe.tags:
+#             card['tags'].append({
+#                 'name': tag.name,
+#                 'color': tag.color,
+#                 'position': tag.position.name
+#             })
+#         cards.append(card)
+#     return(jsonify(cards))
 
 @api_bp.route('/recipe/recompute_signatures')
 def recipe_recompute_sigs():
@@ -200,14 +200,23 @@ def slist_test():
 
 @api_bp.route('/config/init')
 def init_config():
-    force = request.args.get("force", "")
+    force = request.args.get("force", "") == 'true'
+    readme_only = request.args.get("readme_only", "") == 'true'
     default_cfg = {
         'holiday': holiday_default_cfg,
         'slist': slist_default_config,
         'svg': svg_default_cfg
     }
+    with open('readme.md') as fp:
+        md = fp.read()
+    if readme_only:
+        default_cfg = {
+            'doc': {'help_page': md}
+        }
+    else:
+        default_cfg['doc'] = {'help_page': md}
     default = ConfigTree(default_cfg)
-    if force == 'yes':
+    if force:
         save_config(default)
         return 'OK!'
     cfg = load_config()

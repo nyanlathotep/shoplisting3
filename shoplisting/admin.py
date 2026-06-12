@@ -16,6 +16,8 @@ from .svg.svg_helper import generate_svg_batch
 from .slist.csv import get_csv
 from .slist.slist import generate_slist
 from .config.config import load_config, save_config, ConfigTree
+from shoplisting.slist.slist import slist_default_config
+from shoplisting.svg.svg_helper import svg_default_cfg
 
 # class CategoryAjaxLoader(QueryAjaxModelLoader):
 #     def get_list(self, term, offset=0, limit=10):
@@ -392,13 +394,39 @@ class ConfigAdmin(ModelView):
     column_list = ('key', 'value')
     @expose('/get_config/')
     def get_config(self):
-        return jsonify(load_config().tree)
+        return jsonify(load_config())
     @expose('/set_config/', methods=['POST'])
     def set_config(self):
         data = request.get_json()
         cfg = ConfigTree(data)
         save_config(cfg)
         return jsonify({'success': True})
+
+help_page = '''## Getting Started
+In order to initialize the documentation from readme.md, use the [config init endpoint](/api/config/init?readme_only=true&force=true).'''
+
+doc_default_config = {
+    'help_page': help_page
+}
+
+class DocAdmin(BaseView):
+    @expose('/')
+    def index(self):
+        default_cfg = {
+            'holiday': holiday_default_cfg,
+            'slist': slist_default_config,
+            'svg': svg_default_cfg,
+            'doc': doc_default_config
+        }
+        default = ConfigTree(default_cfg, delimiter = '/')
+        cfg = load_config()
+        cfg.default = default
+        cfg.delimiter = '/'
+        cfg['_default'] = default_cfg
+        md = cfg['doc/help_page']
+        md = md.format_map(cfg)
+        html = markdown.markdown(md, extensions=['toc'])
+        return self.render('markdown_page.html', content=html)
 
 def init_admin_views(admin, db):
     admin.add_view(ShoppingListView("Shopping List"))
@@ -408,3 +436,4 @@ def init_admin_views(admin, db):
     admin.add_view(TagAdmin(Tag, db))
     admin.add_view(CardBatchView("Cards"))
     admin.add_view(ConfigAdmin(ConfigEntry, db, name = "Config"))
+    admin.add_view(DocAdmin("Help"))

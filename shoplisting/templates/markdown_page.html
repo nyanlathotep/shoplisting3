@@ -1,0 +1,16 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<div class="container-fluid" style="margin-top: 20px;">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <!-- The safe filter is crucial since we are outputting raw HTML -->
+                    {{ content | safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
