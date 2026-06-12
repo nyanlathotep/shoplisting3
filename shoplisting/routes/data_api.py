@@ -163,26 +163,6 @@ def save_json():
     db.session.commit()
     return jsonify({'success': True, 'redirect': '/admin/recipe/', 'new_ingredients': new_ingredients})
 
-# @api_bp.route('/recipe/card_data')
-# def recipe_card_data():
-#     cards = []
-#     for recipe in Recipe.query.all():
-#         card = {
-#             'name': recipe.name,
-#             'top_note': recipe.top_note,
-#             'bot_note': recipe.bot_note,
-#             'id': recipe.id,
-#             'tags': []
-#         }
-#         for tag in recipe.tags:
-#             card['tags'].append({
-#                 'name': tag.name,
-#                 'color': tag.color,
-#                 'position': tag.position.name
-#             })
-#         cards.append(card)
-#     return(jsonify(cards))
-
 @api_bp.route('/recipe/recompute_signatures')
 def recipe_recompute_sigs():
     for recipe in Recipe.query.all():
@@ -227,13 +207,13 @@ def init_config():
 
 @api_bp.route('/oh/no')
 def nuclear_option():
-    for recipe in Recipe.query.all():
-        db.session.delete(recipe)
-    for ingredient in Ingredient.query.all():
-        db.session.delete(ingredient)
-    for tag in Tag.query.all():
-        db.session.delete(tag)
-    for category in Category.query.all():
-        db.session.delete(category)
-    db.session.commit()
-    return 'ok'
+    # for recipe in Recipe.query.all():
+    #     db.session.delete(recipe)
+    # for ingredient in Ingredient.query.all():
+    #     db.session.delete(ingredient)
+    # for tag in Tag.query.all():
+    #     db.session.delete(tag)
+    # for category in Category.query.all():
+    #     db.session.delete(category)
+    # db.session.commit()
+    return 'oh yes'
