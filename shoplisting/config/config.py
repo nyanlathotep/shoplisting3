@@ -13,37 +13,6 @@ def serialize_tree(node, root_path=[]):
             keys['.'.join(path)] = json.dumps(v)
     return keys
 
-# class ConfigTree():
-#     def __init__(self, tree=None, default=None, delimiter='.'):
-#         self.tree = tree if tree else {}
-#         self.default = default
-#         self.delimiter = delimiter
-#     def __getitem__(self, k):
-#         path = k.split(self.delimiter)
-#         node = self.tree
-#         try:
-#             for tag in path:
-#                 node = node[tag]
-#             return node
-#         except KeyError:
-#             if self.default:
-#                 return self.default[k]
-#             else:
-#                 raise
-#     def __setitem__(self, k, v):
-#         path = k.split('.')
-#         node = self.tree
-#         for tag in path[:-1]:
-#             if tag not in node:
-#                 node[tag] = {}
-#             node = node[tag]
-#         node[path[-1]] = v
-#     def serialize_values(self):
-#         return serialize_tree(self.tree)
-#     def deserialize_values(self, entries):
-#         for k,v in entries.items():
-#             self[k] = json.loads(v)
-
 class ConfigTree(dict):
     def __init__(self, tree=None, default=None, delimiter='.'):
         super().__init__(self)
