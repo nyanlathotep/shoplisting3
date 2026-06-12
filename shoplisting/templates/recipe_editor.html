@@ -159,7 +159,13 @@
 
                 </div>
             </template>
-
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <strong></strong>
+            <button class="btn btn-primary btn-sm"
+                    @click="recipe.steps.push({instruction:'', items:[]})">
+                + Add Step
+            </button>
         </div>
     </div>
 
@@ -170,7 +176,6 @@
             <pre x-text="JSON.stringify(recipe, null, 2)"></pre>
         </div>
     </div>
-
 </div>
 
 {% block tail %}
