@@ -130,9 +130,18 @@ def save_json():
     db.session.add(recipe)
     db.session.flush()
 
-    for tag_id in data['tags']:
+    recipe_tag_ids = {x.id for x in recipe.tags}
+    tag_set = set(data['tags'])
+
+    tags_add = tag_set - recipe_tag_ids
+    tags_rm = recipe_tag_ids - tag_set
+
+    for tag_id in tags_add:
         tag = Tag.query.filter_by(id=tag_id).first()
         recipe.tags.append(tag)
+    for tag in recipe.tags:
+        if tag.id in tags_rm:
+            recipe.tags.remove(tag)
 
     for step in RecipeStep.query.filter_by(recipe_id=recipe.id).all():
         db.session.delete(step)
