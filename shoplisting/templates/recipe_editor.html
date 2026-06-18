@@ -82,10 +82,6 @@
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <strong>Steps</strong>
-            <button class="btn btn-primary btn-sm"
-                    @click="recipe.steps.push({instruction:'', items:[]})">
-                + Add Step
-            </button>
         </div>
 
         <div class="card-body">
@@ -167,21 +163,18 @@
 
                         </div>
                     </template>
-
-                    <button class="btn btn-secondary btn-sm"
-                            @click="step.items.push({amount:'', unit:'', ingredient:'', suggestions:[], highlightIndex:-1, isExisting:false})">
-                        + Add Item
-                    </button>
-
+                    <div class="border-top pt-3 mt-3 d-flex justify-content-between align-items-center gap-2">
+                        <button class="btn btn-secondary btn-sm"
+                                @click="step.items.push({amount:'', unit:'', ingredient:'', suggestions:[], highlightIndex:-1, isExisting:false})">
+                            + Add Item
+                        </button>
+                        <button class="btn btn-primary btn-sm"
+                                @click="recipe.steps.splice(sIndex + 1, 0, {instruction:'', items:[]})">
+                            + Add Step
+                        </button>
+                    </div>
                 </div>
             </template>
-        </div>
-        <div class="card-footer d-flex justify-content-between align-items-center">
-            <strong></strong>
-            <button class="btn btn-primary btn-sm"
-                    @click="recipe.steps.push({instruction:'', items:[]})">
-                + Add Step
-            </button>
         </div>
     </div>
 
@@ -206,7 +199,7 @@ function recipeEditor() {
             bot_note: "",
             remark: "",
             tags: [],
-            steps: []
+            steps: [{instruction:'', items:[]}]
         },
 
         allTags: [],
@@ -222,6 +215,9 @@ function recipeEditor() {
                 let id = params.get("id");
                 let res = await fetch(`/api/recipe/get?id=${id}`);
                 this.recipe = await res.json();
+                if (this.recipe.steps.length == 0) {
+                    this.recipe.steps = [{instruction:'', items:[]}];
+                }
                 // Normalize loaded items so they behave like existing ones
                 for (let step of this.recipe.steps) {
                     for (let item of step.items) {
