@@ -15,6 +15,7 @@ from shoplisting.db import db
 from .svg.svg_helper import generate_svg_batch
 from .slist.csv import get_csv
 from .slist.slist import generate_slist
+from .ui.forms import ColorTextField
 from .config.config import load_config, save_config, ConfigTree
 from shoplisting.slist.slist import slist_default_config
 from shoplisting.svg.svg_helper import svg_default_cfg
@@ -191,11 +192,8 @@ class RecipeAdmin(ModelView):
 
 
 class TagAdmin(ModelView):
-    form_widget_args = {
-        'color': {
-            'type': 'color',
-            'style': 'width: 100px; height: 40px; border: none; cursor: pointer;'
-        }
+    form_overrides = {
+        'color': ColorTextField
     }
 
 class CardBatchView(BaseView):
