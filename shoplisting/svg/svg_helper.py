@@ -52,7 +52,6 @@ def generate_svg_page(recipes,cfg=None):
     if not cfg:
         cfg = load_config()
     cfg.default = ConfigTree({'svg': svg_default_cfg })
-    print(cfg.serialize_values())
     cfg['svg.typeface.ttfpath'] = os.path.join(current_app.static_folder, cfg['svg.typeface.ttfpath'])
     page = SvgPage(cfg)
     for recipe in recipes:

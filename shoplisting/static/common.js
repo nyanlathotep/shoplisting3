@@ -93,9 +93,7 @@ function makeDragManager({ container, itemSelector, getArray, onReorder }) {
 
 // handler for button/tab switcher thingus
 function mount_switcher(btn_class, tab_class, default_tab) {
-    console.log(btn_class, tab_class, default_tab);
     $(btn_class).on('click', function() {
-        console.log(this);
         $(btn_class).removeClass('active');
         $(this).addClass('active');
         let tab = $(this).data('tab');
