@@ -85,7 +85,6 @@
         </div>
 
         <div class="card-body">
-
             <template x-for="(step, sIndex) in recipe.steps" :key="sIndex">
                 <div class="border rounded p-3 mb-4">
 
@@ -169,7 +168,7 @@
                             Remove Step
                         </button>
                         <button class="btn btn-primary btn-sm"
-                                @click="recipe.steps.splice(sIndex + 1, 0, {instruction:'', items:[]})">
+                                @click="recipe.steps.splice(sIndex + 1, 0, {id: new_id(), instruction:'', items:[]})">
                             + Add Step
                         </button>
                     </div>
@@ -193,6 +192,10 @@
 <script src={{ url_for('static', filename='alpine.min.js') }} defer></script>
 <script src={{ url_for('static', filename='common.js') }} defer></script>
 <script>
+let last_id = 0
+function new_id() {
+    last_id++; return last_id;
+}
 function recipeEditor() {
     return {
         recipe: {
@@ -202,7 +205,7 @@ function recipeEditor() {
             bot_note: "",
             remark: "",
             tags: [],
-            steps: [{instruction:'', items:[]}]
+            steps: [{id: new_id(), instruction:'', items:[]}]
         },
 
         allTags: [],
@@ -219,14 +222,15 @@ function recipeEditor() {
                 let res = await fetch(`/api/recipe/get?id=${id}`);
                 this.recipe = await res.json();
                 if (this.recipe.steps.length == 0) {
-                    this.recipe.steps = [{instruction:'', items:[]}];
+                    this.recipe.steps = [{id: new_id(), instruction:'', items:[]}];
                 }
                 // Normalize loaded items so they behave like existing ones
                 for (let step of this.recipe.steps) {
+                    step.id = new_id();
                     for (let item of step.items) {
                         item.suggestions = [];
                         item.highlightIndex = -1;
-                        item.isExisting = true;   // <-- key fix
+                        item.isExisting = true;
                     }
                 }
             }
@@ -236,7 +240,7 @@ function recipeEditor() {
             if (this.recipe.steps[index].items.length == 0 || force == true) {
                 this.recipe.steps.splice(index,1);
                 if (this.recipe.steps.length == 0) {
-                    this.recipe.steps = [{instruction:'', items:[]}];
+                    this.recipe.steps = [{id: new_id(), instruction:'', items:[]}];
                 }
                 return;
             }
