@@ -51,7 +51,6 @@ from wtforms.widgets import TextInput
 
 class ColorTextWidget(TextInput):
     def __call__(self, field, **kwargs):
-        print('made a ColorTextWidget')
         color_value = field.data or "#123456"
         color_id = f"{field.id}-color"
         text_id = f"{field.id}-text"

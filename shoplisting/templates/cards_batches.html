@@ -75,7 +75,7 @@
     {% for b in batches %}
     <tr class="{% if b.id in selected %}table-info{% endif %}">
         <td>
-            <input type="checkbox" class="row-check" value="{{ b.id }}"
+            <input type="checkbox" class="row-check" value="{{ b.id }}" data-count="{{ b.count }}"
                    {% if b.id in selected %}checked{% endif %}>
         </td>
         <td>{{ b.id }}</td>
@@ -86,17 +86,25 @@
         <td>{{ "Yes" if b.affirmed else "No" }}</td>
         <td>
             <a class="btn btn-sm btn-success" href="{{ url_for('.download', batch_id=b.id) }}">Download</a>
-            <a class="btn btn-sm btn-primary" href="{{ url_for('.affirm', batch_id=b.id) }}">Affirm</a>
-            <a class="btn btn-sm btn-danger" href="{{ url_for('.delete', batch_id=b.id) }}">Delete</a>
+            {% if not b.affirmed %} <button class="affirm-list-btn btn btn-sm btn-primary"
+                data-count="{{ b.count }}"
+                data-list="{{', '.join(b.full_recipe_list)}}"
+                data-id="{{b.id}}">
+                Affirm
+            </button> {% endif %}
+            <a class="delete-list-btn btn btn-sm btn-danger" data-count="{{ b.count }}" data-list="{{', '.join(b.full_recipe_list)}}" data-id="{{b.id}}">Delete</a>
         </td>
     </tr>
     {% endfor %}
     </tbody>
 </table>
 
+{% include 'delete_modal.html' %}
+
 {% endblock %}
 
 {% block tail %}
+<script src={{ url_for('static', filename='common.js') }} defer></script>
 <script>
 $(function() {
     let selected = [];
@@ -131,6 +139,125 @@ $(function() {
         }
     }
 
+    function getSelected() {
+        let elems = $('.row-check:checked').map(function() {
+            return $(this);
+        }).get();
+        let selected = [];
+        let count = 0;
+        for (e of elems) {
+            selected.push(e.val());
+            count += e.data('count');
+        }
+        return {selected: selected, count: count}
+    }
+
+    // affirming cards
+    $('#bulk-affirm').on('click', function() {
+        const {selected, count} = getSelected();
+        if (!selected.length) return;
+        confirm_modal({
+                modalId: '#confirmModal',
+                title: 'Affirm Cards?',
+                body: `There are ${count} cards among these ${selected.length} pages. Please be sure the cards on these pages are in circulation before affirming them.`,
+                confirmText: 'Affirm',
+                confirmCls: 'btn btn-primary',
+                onConfirm: () => affirm_cards(selected)
+        })
+    });
+
+    $('.affirm-list-btn').on('click', function() {
+        const pending_id = $(this).data('id');
+        const recipe_list = $(this).data('list');
+        
+        confirm_modal({
+                modalId: '#confirmModal',
+                title: 'Affirm Cards?',
+                body: `Please be sure that the following cards are in circulation before affirming this page: ${recipe_list}.`,
+                confirmText: 'Affirm',
+                confirmCls: 'btn btn-primary',
+                onConfirm: () => affirm_cards([pending_id])
+        })
+    });
+
+    function affirm_cards(ids) {
+        fetch("{{ url_for('.affirm') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: ids })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                flashError(data.message);
+                return;
+            }
+            else {
+                location.reload();
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            flashError("Unexpected error.");
+        });
+    }
+    
+    //deleting cards
+    $('.delete-list-btn').on('click', function() {
+        const pending_id = $(this).data('id');
+        const recipe_list = $(this).data('list');
+        
+        confirm_modal({
+                modalId: '#confirmModal',
+                title: 'Delete Cards?',
+                body: `Do you wish to delete this page? It contains: ${recipe_list}.`,
+                onConfirm: () => delete_cards([pending_id])
+        })
+    });
+
+    $('#bulk-delete').on('click', function() {
+        const {selected, count} = getSelected();
+        if (!selected.length) return;
+        confirm_modal({
+                modalId: '#confirmModal',
+                title: 'Delete Cards?',
+                body: `There are ${count} cards among these ${selected.length} pages. Are you sure you want to delete them?`,
+                onConfirm: () => delete_cards(selected)
+        })
+    });
+
+    function delete_cards(ids) {
+        fetch("{{ url_for('.delete') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: ids })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                flashError(data.message);
+                return;
+            }
+            else {
+                $('.row-check').prop("checked", false);
+                location.reload();
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            flashError("Unexpected error.");
+        });
+    }
+
+    // downloading cards
+    $('#bulk-download').on('click', function() {
+        const {selected, count} = getSelected();
+        if (!selected.length) return;
+        // redirect to a ZIP download endpoint
+        window.location = "{{ url_for('.bulk_download') }}?ids=" + selected.join(',');
+    });
+
+
     // Initial state
     updateModeVisibility();
 
@@ -162,36 +289,6 @@ $(function() {
 
     $('#select-all').on('change', function() {
         $('.row-check').prop('checked', this.checked);
-    });
-
-    function getSelected() {
-        return $('.row-check:checked').map(function() {
-            return $(this).val();
-        }).get();
-    }
-
-    $('#bulk-download').on('click', function() {
-        let ids = getSelected();
-        if (!ids.length) return;
-
-        // redirect to a ZIP download endpoint
-        window.location = "{{ url_for('.bulk_download') }}?ids=" + ids.join(',');
-    });
-
-    $('#bulk-affirm').on('click', function() {
-        let ids = getSelected();
-        if (!ids.length) return;
-
-        $.post("{{ url_for('.bulk_affirm') }}", { ids: JSON.stringify(ids) })
-            .done(() => location.reload());
-    });
-
-    $('#bulk-delete').on('click', function() {
-        let ids = getSelected();
-        if (!ids.length) return;
-
-        $.post("{{ url_for('.bulk_delete') }}", { ids: JSON.stringify(ids) })
-            .done(() => location.reload());
     });
 });
 </script>
