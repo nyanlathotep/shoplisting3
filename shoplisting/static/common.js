@@ -57,3 +57,36 @@ function flashError(message) {
         behavior: 'smooth'
     });
 }
+
+function makeDragManager({ container, itemSelector, getArray, onReorder }) {
+    let dragIndex = null;
+
+    $(container).on('dragstart', itemSelector, function () {
+        dragIndex = $(this).data('index');
+        $(this).addClass('dragging');
+    });
+
+    $(container).on('dragend', itemSelector, function () {
+        $(this).removeClass('dragging');
+        dragIndex = null;
+    });
+
+    $(container).on('dragover', itemSelector, function (e) {
+        e.preventDefault();
+    });
+
+    $(container).on('drop', itemSelector, function (e) {
+        e.preventDefault();
+        if (!$(this).data('index') && $(this).data('index') !== 0) return;
+
+        const dropIndex = $(this).data('index');
+        if (dropIndex === dragIndex) return;
+
+        const arr = getArray();
+
+        const [moved] = arr.splice(dragIndex, 1);
+        arr.splice(dropIndex, 0, moved);
+
+        onReorder?.(arr);
+    });
+}

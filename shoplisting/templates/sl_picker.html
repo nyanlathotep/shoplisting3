@@ -212,32 +212,11 @@ $(function() {
     });
 
     // drag and drop
-    let dragIndex = null;
-
-    $('#recipe-list').on('dragstart', '.recipe-item', function(e) {
-        dragIndex = $(this).data('index');
-        $(this).addClass('dragging');
-    });
-
-    $('#recipe-list').on('dragend', '.recipe-item', function(e) {
-        $(this).removeClass('dragging');
-        dragIndex = null;
-    });
-
-    $('#recipe-list').on('dragover', '.recipe-item', function(e) {
-        e.preventDefault();
-    });
-
-    $('#recipe-list').on('drop', '.recipe-item', function(e) {
-        e.preventDefault();
-
-        let dropIndex = $(this).data('index');
-        if (dropIndex === dragIndex) return;
-
-        const [moved] = selected.splice(dragIndex, 1);
-        selected.splice(dropIndex, 0, moved);
-
-        refreshList();
+    makeDragManager({
+        container: '#recipe-list',
+        itemSelector: '.recipe-item',
+        getArray: () => selected,
+        onReorder: () => refreshList()
     });
 
     // date options
