@@ -288,14 +288,19 @@ class CardPage(db.Model):
     affirmed: Mapped[bool] = mapped_column(server_default='0')
     signatures: Mapped[List["CardSig"]] = relationship(back_populates="page", passive_deletes=True)
     # list of recipe names for display on view
-    @hybrid_property
-    def recipe_list(self, full=False):
+    def get_recipe_list(self, full=False):
         recipe_names = [x.recipe.name for x in self.signatures]
         text = ', '.join(recipe_names)
-        if full: return text
+        if full: return recipe_names
         if len(text) > 80:
             text = text[:77] + '...'
         return text
+    @hybrid_property
+    def recipe_list(self):
+        return self.get_recipe_list()
+    @hybrid_property
+    def full_recipe_list(self):
+        return self.get_recipe_list(True)
     def affirm_all(self):
         if self.affirmed: return
         for sig in self.signatures:
@@ -342,14 +347,19 @@ class ShoppingList(db.Model):
     scheduled_meals: Mapped[List["ScheduleMeal"]] = relationship(back_populates="slist", cascade="all, delete-orphan")
     single_items: Mapped[List["SingleItem"]] = relationship(back_populates="slist")
     # list of associated meals for display on the view
-    @hybrid_property
-    def recipe_list(self, full=False):
+    def get_recipe_list(self, full=False):
         recipe_names = [x.recipe.name for x in self.scheduled_meals]
         text = ', '.join(recipe_names)
-        if full: return text
+        if full: return recipe_names
         if len(text) > 80:
             text = text[:77] + '...'
         return text
+    @hybrid_property
+    def recipe_list(self):
+        return self.get_recipe_list()
+    @hybrid_property
+    def full_recipe_list(self):
+        return self.get_recipe_list(True)
     @hybrid_property
     def end_date(self):
         if self.start_date:

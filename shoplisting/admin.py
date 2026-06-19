@@ -204,6 +204,8 @@ class CardBatchView(BaseView):
 
         batches = CardPage.query.order_by(CardPage.created_at.desc()).all()
         recipes = Recipe.query.order_by(Recipe.name).all()
+        for batch in batches:
+            batch.count = len(batch.full_recipe_list)
 
         return self.render(
             'cards_batches.html',
@@ -230,15 +232,26 @@ class CardBatchView(BaseView):
                 flash("No recipes selected", "warning")
                 return redirect(url_for('.index'))
 
-        # Call your generator
+        # generate some svgs or something
         result = generate_svg_batch(recipes)
-        print(result)
-        #batch = result["batch"]  # CardBatch instance
-        #db.session.add(batch)
-        #db.session.commit()
 
         # Redirect back with the new batch highlighted
         return redirect(url_for('.index', selected=','.join(str(pid) for pid in result['pages'])))
+
+    @expose('/affirm', methods=['POST'])
+    def affirm(self):
+        ids = request.json['ids']
+        for page in CardPage.query.filter(CardPage.id.in_(ids)).all():
+            page.affirm_all()
+        return jsonify({'success': True})
+
+    @expose('/delete', methods=['POST'])
+    def delete(self):
+        ids = request.json['ids']
+        for card in CardPage.query.filter(CardPage.id.in_(ids)):
+            db.session.delete(card)
+        db.session.commit()
+        return jsonify({'success': True})
 
     @expose('/download/<int:batch_id>')
     def download(self, batch_id):
@@ -249,25 +262,15 @@ class CardBatchView(BaseView):
             headers={"Content-Disposition": f'attachment; filename="cards_{batch_id}.svg"'}
         )
 
-    @expose('/affirm/<int:batch_id>')
-    def affirm(self, batch_id):
-        batch = CardPage.query.get_or_404(batch_id)
-        batch.affirm_all()
-        flash("Page affirmed", "success")
-        return redirect(url_for('.index'))
-
-    @expose('/delete/<int:batch_id>')
-    def delete(self, batch_id):
-        batch = CardPage.query.get_or_404(batch_id)
-        db.session.delete(batch)
-        db.session.commit()
-        flash("Page deleted", "success")
-        return redirect(url_for('.index'))
-
     @expose('/bulk_download')
     def bulk_download(self):
         raw = request.args.get('ids', '')
         ids = [int(x) for x in raw.split(',') if x.isdigit()]
+        if len(ids) == 0:
+            return jsonify({'success': False, 'message': 'sorry nothing'})
+        elif len(ids) == 1:
+            # don't batch if unnecessary to avoid confusing the userbase
+            return self.download(ids[0])
 
         batches = CardPage.query.filter(CardPage.id.in_(ids)).all()
 
@@ -282,23 +285,6 @@ class CardBatchView(BaseView):
             mimetype='application/zip',
             headers={'Content-Disposition': 'attachment; filename="card_batches.zip"'}
         )
-
-    @expose('/bulk_affirm', methods=['POST'])
-    def bulk_affirm(self):
-        ids = json.loads(request.form['ids'])
-        for page in CardPage.query.filter(CardPage.id.in_(ids)).all():
-            page.affirm_all()
-        flash("Pages affirmed", "success")
-        return "ok"
-
-    @expose('/bulk_delete', methods=['POST'])
-    def bulk_delete(self):
-        ids = json.loads(request.form['ids'])
-        for card in CardPage.query.filter(CardPage.id.in_(ids)):
-            db.session.delete(card)
-        db.session.commit()
-        flash("Pages deleted", "success")
-        return "ok"
 
 class ShoppingListView(BaseView):
     @expose('/', methods=['GET'])

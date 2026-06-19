@@ -325,7 +325,6 @@ $(function() {
     $('.delete-slist-btn').on('click', function() {
         const pendingDeleteId = $(this).data('id');
         const startDate = $(this).data('start');
-        console.log(pendingDeleteId, startDate);
         let body = "Are you sure you want to delete this shopping list?";
         if (startDate != "None") {
             body = `This shopping list has an assigned start date (${startDate}).
@@ -341,7 +340,6 @@ $(function() {
     });
 
     function delete_list(pendingDeleteId) {
-        console.log(pendingDeleteId);
         fetch('{{ url_for(".delete_slist") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
