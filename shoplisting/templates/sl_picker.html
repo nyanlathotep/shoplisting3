@@ -6,7 +6,6 @@
     <link rel="stylesheet" href="{{ url_for('admin.static', filename='vendor/select2/select2.css') }}">
     <link rel="stylesheet" href="{{ url_for('admin.static', filename='vendor/select2/select2-bootstrap4.css') }}">
     <style>
-        .input-mode { display: none; }
         .recipe-item {
             padding: 6px 10px;
             border: 1px solid #ddd;
@@ -30,26 +29,26 @@
 
         <!-- Input mode selector -->
         <div class="btn-group mb-3" role="group">
-            <button class="btn btn-outline-primary mode-btn active" data-mode="csv-upload">CSV Upload</button>
-            <button class="btn btn-outline-primary mode-btn" data-mode="csv-text">CSV Text</button>
-            <button class="btn btn-outline-primary mode-btn" data-mode="manual">Manual Select</button>
+            <button class="btn btn-outline-primary input-mode-btn active" data-tab="#input-csv-upload">CSV Upload</button>
+            <button class="btn btn-outline-primary input-mode-btn" data-tab="#input-csv-text">CSV Text</button>
+            <button class="btn btn-outline-primary input-mode-btn" data-tab="#input-recipe-select">Manual Select</button>
         </div>
 
         <!-- CSV Upload -->
-        <div id="csv-upload" class="input-mode" style="display:block;">
+        <div id="input-csv-upload" class="input-mode-tab" style="display:block;">
             <input type="file" id="csv-file" class="form-control-file" accept=".csv">
             <button id="import-csv-file" class="btn btn-secondary mt-2">Import CSV File</button>
         </div>
 
         <!-- CSV Text -->
-        <div id="csv-text" class="input-mode">
+        <div id="input-csv-text" class="input-mode-tab">
             <textarea id="csv-textarea" class="form-control" rows="5"
                       placeholder="Paste CSV text here…"></textarea>
             <button id="import-csv-text" class="btn btn-secondary mt-2">Import CSV Text</button>
         </div>
 
         <!-- Manual Select -->
-        <div id="manual" class="input-mode">
+        <div id="input-recipe-select" class="input-mode-tab">
             <select id="recipe-picker" class="form-control">
                 <option value="">Select recipe…</option>
                 {% for r in recipes %}
@@ -150,17 +149,8 @@ $(function() {
         return results;
     }
 
-    // -------------------------------
-    // MODE SWITCHING
-    // -------------------------------
-    $('.mode-btn').on('click', function() {
-        $('.mode-btn').removeClass('active');
-        $(this).addClass('active');
-
-        let mode = $(this).data('mode');
-        $('.input-mode').hide();
-        $('#' + mode).show();
-    });
+    // tab switching for input mode
+    mount_switcher('.input-mode-btn', '.input-mode-tab', '#input-csv-upload');
 
     // -------------------------------
     // SELECT2

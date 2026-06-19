@@ -90,3 +90,18 @@ function makeDragManager({ container, itemSelector, getArray, onReorder }) {
         onReorder?.(arr);
     });
 }
+
+// handler for button/tab switcher thingus
+function mount_switcher(btn_class, tab_class, default_tab) {
+    console.log(btn_class, tab_class, default_tab);
+    $(btn_class).on('click', function() {
+        console.log(this);
+        $(btn_class).removeClass('active');
+        $(this).addClass('active');
+        let tab = $(this).data('tab');
+        $(tab_class).hide();
+        $(tab).show();
+    });
+    $(tab_class).hide();
+    $(default_tab).show();
+}
