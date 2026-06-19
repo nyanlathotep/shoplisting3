@@ -1,5 +1,5 @@
 from sqlalchemy.sql import func
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, render_template
 import markdown
 from shoplisting.db import db
 from shoplisting.model import Category, Ingredient, Tag, Recipe, RecipeStep, RecipeItem, ConfigEntry
@@ -8,6 +8,7 @@ from shoplisting.slist.slist import slist_default_config
 from shoplisting.svg.svg_helper import svg_default_cfg
 from shoplisting.config.config import load_config, ConfigTree, save_config
 from shoplisting.slist.slist import generate_slist
+from shoplisting.util.format import SynthRecipe
 
 api_bp = Blueprint('api', __name__)
 
@@ -171,6 +172,15 @@ def save_json():
             ))
     db.session.commit()
     return jsonify({'success': True, 'redirect': '/admin/recipe/', 'new_ingredients': new_ingredients})
+
+@api_bp.route('/recipe/print', methods=['POST'])
+def render_recipe_printout():
+    data = request.get_json()
+    recipe = SynthRecipe(data)
+    return render_template(
+        'recipe_print.html',
+        recipe = recipe
+    )
 
 @api_bp.route('/recipe/recompute_signatures')
 def recipe_recompute_sigs():

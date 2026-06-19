@@ -47,10 +47,21 @@ svg_default_cfg = {
     }
 }
 
+def generate_svg_page(recipes,cfg=None):
+    if not cfg:
+        cfg = load_config()
+    cfg.default = ConfigTree({'svg': svg_default_cfg })
+    print(cfg.serialize_values())
+    cfg['svg.typeface.ttfpath'] = os.path.join(current_app.static_folder, cfg['svg.typeface.ttfpath'])
+    page = SvgPage(cfg)
+    for recipe in recipes:
+        card = recipe.card_data
+        page.addcard(card)
+    return page.svg_data()
+
 def generate_svg_batch(recipes):
     cfg = load_config()
     cfg.default = ConfigTree({'svg': svg_default_cfg })
-    cfg['svg.typeface.ttfpath'] = os.path.join(current_app.static_folder, cfg['svg.typeface.ttfpath'])
     page_batch = cfg['svg.page.cardgrid']
     page_batch = page_batch[0] * page_batch[1]
     pages = []
@@ -58,11 +69,7 @@ def generate_svg_batch(recipes):
         batch = recipes[i:min(i+12,len(recipes))]
         signatures = []
         recipe_ids = set()
-        page = SvgPage(cfg)
-        for recipe in batch:
-            card = recipe.card_data
-            page.addcard(card)
-        svg = page.svg_data()
+        svg = generate_svg_page(batch)
         card_page = CardPage(data = svg)
         db.session.add(card_page)
         db.session.flush()

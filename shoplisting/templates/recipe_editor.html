@@ -203,20 +203,63 @@
 
     {% include 'delete_modal.html' %}
 
-    <!-- Debug JSON -->
-    <div class="card mt-4">
+    <div class="btn-group mb-3" role="group">
+        <button class="btn btn-outline-primary preview-mode-btn active" data-tab="#preview-print">Print Preview</button>
+        <button class="btn btn-outline-primary preview-mode-btn" data-tab="#preview-svg">SVG Preview</button>
+        <button class="btn btn-outline-primary preview-mode-btn" data-tab="#preview-json">Debug JSON</button>
+    </div>
+
+    <div id="preview-print" class="card mt-4 preview-panel">
+        <div class="card-header"><strong>Print Preview</strong></div>
+        <div class="card-body">
+            <div 
+                x-data="previewLoader({
+                    url: '/api/recipe/print',
+                    watch: () => recipe,
+                    loader_type: 'html'})"
+                x-init="init()">
+                <div x-ref="container" x-html="content"></div>
+        </div>
+    </div>
+    </div>
+
+    <div id="preview-svg" class="card mt-4 preview-panel">
+        <div class="card-header"><strong>SVG Preview</strong></div>
+        <div class="card-body">
+            <div 
+                x-data="previewLoader({
+                    url: '/api/card/draw_preview',
+                    watch: () => recipe,
+                    loader_type: 'svg-vp',
+                    on_load: svg => {
+                        // Modify viewport here
+                        svg.setAttribute('viewBox', '24 24 192 336');
+                        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                    }})"
+                x-init="init()">
+                <div x-ref="container" x-html="content"></div>
+                <!-- <img x-ref="container" :src="content" alt="Preview" /> -->
+            </div>
+        </div>
+    </div>
+
+    <div id="preview-json" class="card mt-4 preview-panel">
         <div class="card-header"><strong>Debug JSON</strong></div>
         <div class="card-body">
             <pre x-text="JSON.stringify(recipe, null, 2)"></pre>
         </div>
     </div>
-</div>
 
 {% block tail %}
+<style>
+    svg {
+        max-height: 400px;
+    }
+</style>
 <script src={{ url_for('static', filename='alpine.min.js') }} defer></script>
 <script src={{ url_for('static', filename='common.js') }} defer></script>
 <script>
-let last_id = 0
+var last_id = 0
 function new_id() {
     last_id++; return last_id;
 }
@@ -258,6 +301,7 @@ function recipeEditor() {
                     }
                 }
             }
+            mount_switcher('.preview-mode-btn', '.preview-panel', '#preview-print');
         },
 
         move_step(from, to) {
@@ -378,6 +422,59 @@ function recipeEditor() {
             } else {
                 alert("Save failed")
             }
+        },
+
+        previewLoader({ url, watch, loader_type, on_load }) {
+            return {
+                content: '',
+                visible: false,
+                observer: null,
+                lastValue: null,
+
+                async fetchContent() {
+                    if (!this.visible) return;
+
+                    const current = watch();
+                    const serialized = JSON.stringify(current);
+
+                    if (serialized === this.lastValue) return;
+                    this.lastValue = serialized;
+
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(current)
+                    });
+
+                    if (loader_type == 'html') {
+                        this.content = await res.text();
+                    } else if (loader_type == 'svg-image') {
+                        // Blob → object URL → <img src="">
+                        const svgText = await res.text();
+                        const blob = new Blob([svgText], { type: 'image/svg+xml' });
+                        this.content = URL.createObjectURL(blob);
+                    } else if (loader_type == 'svg-vp') {
+                        this.content = await res.text();
+                        this.$nextTick(() => {
+                            const svgEl = this.$refs.container.querySelector('svg');
+                            if (svgEl && on_load) on_load(svgEl);
+                        });
+                    }
+                },
+
+                init() {
+                    this.observer = new IntersectionObserver(entries => {
+                        this.visible = entries[0].isIntersecting;
+                        if (this.visible) this.fetchContent();
+                    });
+
+                    this.observer.observe(this.$refs.container);
+
+                    this.$watch(watch, () => {
+                        this.fetchContent();
+                    });
+                }
+            };
         }
     }
 }

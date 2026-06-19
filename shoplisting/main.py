@@ -5,6 +5,7 @@ from sqlalchemy import event
 import glob, os.path
 from shoplisting.db import db
 from .routes.data_api import api_bp
+from .routes.svg_api import svg_api_bp
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///shoplisting.db"
@@ -35,7 +36,7 @@ with app.app_context():
     init_admin_views(admin, db)
 
 app.register_blueprint(api_bp, url_prefix='/api')
-#app.register_blueprint(svg_api_bp, url_prefix='/api')
+app.register_blueprint(svg_api_bp, url_prefix='/api')
 
 def start_server():
     app.run(host='0.0.0.0', port=5000)
