@@ -158,18 +158,42 @@
 
                         </div>
                     </template>
-                    <div class="border-top pt-3 mt-3 d-flex justify-content-between align-items-center gap-2">
-                        <button class="btn btn-secondary btn-sm"
+                    <div class="border-top pt-1 mt-1 mr-1">
+                        <button class="btn btn-success btn-sm"
                                 @click="step.items.push({amount:'', unit:'', ingredient:'', suggestions:[], highlightIndex:-1, isExisting:false})">
-                            + Add Item
+                            <span class="fa fa-plus"></span> Item
                         </button>
-                        <button class="btn btn-danger btn-sm"
-                                @click="remove_step(sIndex)">
-                            Remove Step
+                        <button class="btn btn-secondary btn-sm"
+                                @click="move_step(sIndex,0)"
+                                :disabled="sIndex == 0"
+                                :class="{'disabled': sIndex == 0}">
+                            <span class="fa fa-angle-double-up"></span>
+                        </button>
+                        <button class="btn btn-secondary btn-sm"
+                                @click="move_step(sIndex,sIndex-1)"
+                                :disabled="sIndex == 0"
+                                :class="{'disabled': sIndex == 0}">
+                            <span class="fa fa-angle-up"></span>
+                        </button>
+                        <button class="btn btn-secondary btn-sm"
+                                @click="move_step(sIndex,sIndex+1)"
+                                :disabled="sIndex == recipe.steps.length - 1"
+                                :class="{'disabled': sIndex == recipe.steps.length - 1}">
+                            <span class="fa fa-angle-down"></span>
+                        </button>
+                        <button class="btn btn-secondary btn-sm"
+                                @click="move_step(sIndex,recipe.steps.length-1)"
+                                :disabled="sIndex == recipe.steps.length - 1"
+                                :class="{'disabled': sIndex == recipe.steps.length - 1}">
+                            <span class="fa fa-angle-double-down"></span>
                         </button>
                         <button class="btn btn-primary btn-sm"
                                 @click="recipe.steps.splice(sIndex + 1, 0, {id: new_id(), instruction:'', items:[]})">
-                            + Add Step
+                            <span class="fa fa-plus"></span> Step
+                        </button>
+                        <button class="btn btn-danger btn-sm"
+                                @click="remove_step(sIndex)">
+                            <span class="fa fa-ban"></span> Remove Step
                         </button>
                     </div>
                 </div>
@@ -234,6 +258,11 @@ function recipeEditor() {
                     }
                 }
             }
+        },
+
+        move_step(from, to) {
+            const [moved] = this.recipe.steps.splice(from, 1);
+            this.recipe.steps.splice(to, 0, moved);
         },
 
         remove_step(index, force) {
