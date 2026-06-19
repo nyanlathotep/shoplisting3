@@ -53,29 +53,7 @@
         </div>
     </div>
 
-    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-        
-            <div class="modal-header">
-                <h5 class="modal-title">Remove Item</h5>
-                <button type="button" class="close" data-dismiss="modal">
-                <span>&times;</span>
-                </button>
-            </div>
-        
-            <div class="modal-body" id="confirm-delete-body">
-                Are you sure you want to remove this item?
-            </div>
-        
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button type="button" id="confirm-delete-btn" class="btn btn-danger">Remove</button>
-            </div>
-        
-            </div>
-        </div>
-    </div>
+    {% include 'delete_modal.html' %}
 
 </div>
 
@@ -90,6 +68,7 @@
         background-color: #f0f0f0;
     }
 </style>
+<script src={{ url_for('static', filename='common.js') }} defer></script>
 <script>
 $(function() {
 
@@ -208,30 +187,27 @@ $(function() {
         });
     });
 
-    let pendingDeleteId = null;
-
+    // loose item delete modal handler
     $('#loose-items-list').on('click', '.remove-loose-item', function() {
-        pendingDeleteId = $(this).data('id');
+        const pendingDeleteId = $(this).data('id');
         let name = $(this).data('name');
-
-        $('#confirm-delete-body').text(
-            `Are you sure you want to remove ${name} from the pending items?`
-        );
-
-        $('#confirmDeleteModal').modal('show');
+        
+        confirm_modal({
+                modalId: '#confirmModal',
+                title: 'Delete Item?',
+                body: `Are you sure you want to remove ${name} from the pending items?`,
+                onConfirm: () => delete_item(pendingDeleteId)
+        })
     });
-    
-    $('#confirm-delete-btn').on('click', function() {
-        $('#confirmDeleteModal').modal('hide');
-        let id = pendingDeleteId;
 
+    function delete_item(id) {
         fetch('{{ url_for("admin.remove_loose_item") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id })
         })
         .then(() => refreshLooseItems());
-    });
+    }
 
     // -------------------------------
     // LOOSE ITEM AUTOCOMPLETE (Alpine-style)
