@@ -190,7 +190,6 @@ class RecipeAdmin(ModelView):
             recipe = recipe
         )
 
-
 class TagAdmin(ModelView):
     form_overrides = {
         'color': ColorTextField

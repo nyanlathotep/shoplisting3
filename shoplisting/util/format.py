@@ -1,5 +1,6 @@
 from shoplisting.model import Ingredient, Tag
 
+# datastructures for working with recipe data not in database, same interface, mostly
 class SynthIngredient():
     def __init__(self, name):
         self.name = name

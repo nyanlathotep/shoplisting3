@@ -17,6 +17,8 @@ def set_preview_override(cfg):
 
 @svg_api_bp.route('/card/draw_preview', methods=['POST'])
 def draw_preview():
+    # attempted to draw a smaller canvas with a single card, but had rendering issues
+    # cropping viewport clientside instead
     #cfg = load_config()
     #set_preview_override(cfg)
     data = request.get_json()

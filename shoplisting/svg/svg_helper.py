@@ -47,6 +47,7 @@ svg_default_cfg = {
     }
 }
 
+# single page of recipes to SVG only
 def generate_svg_page(recipes,cfg=None):
     if not cfg:
         cfg = load_config()
@@ -59,6 +60,8 @@ def generate_svg_page(recipes,cfg=None):
         page.addcard(card)
     return page.svg_data()
 
+# auto-batches arbitrary number of recipes, rendering them to SVG
+# and saving the pages and signatures to db
 def generate_svg_batch(recipes):
     cfg = load_config()
     cfg.default = ConfigTree({'svg': svg_default_cfg })
