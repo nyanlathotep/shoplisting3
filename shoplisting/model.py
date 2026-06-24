@@ -223,28 +223,28 @@ def recipe_insert_listener(mapper, connection, target):
 @event.listens_for(Recipe.name, "set")
 def recipe_name_change(target, value, oldvalue, initiator):
     if value == oldvalue: return
-    target._needs_path_update = True
+    target._needs_sig_update = True
 @event.listens_for(Recipe.top_note, "set")
 def recipe_tnote_change(target, value, oldvalue, initiator):
     if value == oldvalue: return
-    target._needs_path_update = True
+    target._needs_sig_update = True
 @event.listens_for(Recipe.bot_note, "set")
 def recipe_bnote_change(target, value, oldvalue, initiator):
     if value == oldvalue: return
-    target._needs_path_update = True
+    target._needs_sig_update = True
 @event.listens_for(Recipe.tags, "append")
 def recipe_tag_add(target, value, initiator):
-    target._needs_path_update = True
+    target._needs_sig_update = True
 @event.listens_for(Recipe.tags, "remove")
 def recipe_tag_del(target, value, initiator):
-    target._needs_path_update = True
+    target._needs_sig_update = True
 # update cardsig on flush
 @event.listens_for(db.session, "after_flush_postexec")
 def recipe_change_listener(session, flush_context):
     for obj in session.identity_map.values():
         if isinstance(obj, Recipe) and getattr(obj, "_needs_sig_update", False):
             obj.update_cardsig()
-            del obj._needs_path_update
+            del obj._needs_sig_update
 # ooh look at me, I'm an ORM, what do I do, manage objects? no.
 
 # recipe subcomponents
